@@ -1,0 +1,121 @@
+/* AirdropBanner.module.css */
+.banner {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Progress bar styles */
+.progressContainer {
+  width: 100%;
+}
+
+.progressLabels {
+  display: flex;
+  justify-content: space-between;
+  color: #6366f1;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.progressBarWrapper {
+  width: 100%;
+}
+
+.progressBar {
+  width: 100%;
+  height: 2rem;
+  background: #f3f4f6;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 999px;
+  position: relative;
+  transition: width 0.3s ease-in-out;
+  min-width: 2rem; /* Ensures the progress label is always visible */
+}
+
+.progressLabel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.progressValues {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .banner {
+    padding: 1rem;
+  }
+
+  .progressValues {
+    font-size: 0.75rem;
+  }
+}
+
+
+/* Add these new styles */
+.priceContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+}
+
+.priceLabel {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.priceValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #6366f1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Update responsive styles */
+@media (max-width: 640px) {
+  .priceContainer {
+    padding: 0.25rem;
+  }
+
+  .priceLabel {
+    font-size: 1rem;
+  }
+
+  .priceValue {
+    font-size: 1.25rem;
+  }
+}

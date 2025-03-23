@@ -1,0 +1,88 @@
+/* CountdownTimer.module.css */
+.timerContainer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 0;
+  opacity: 0;
+  animation: fadeInUp 1s ease forwards;
+}
+
+.counterBox {
+  background: linear-gradient(
+    145deg,
+    rgba(99, 102, 241, 0.1),
+    rgba(139, 92, 246, 0.1)
+  );
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  min-width: 100px;
+  text-align: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease;
+}
+
+.counterBox:hover {
+  transform: translateY(-2px);
+}
+
+.counterInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.counterValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(to right, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: "Inter", sans-serif;
+}
+
+.counterLabel {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: #6b7280;
+  letter-spacing: 0.05em;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .timerContainer {
+    gap: 0.5rem;
+    padding: 1rem 0;
+    flex-wrap: wrap;
+  }
+
+  .counterBox {
+    min-width: calc(50% - 1rem);
+    padding: 0.75rem 1rem;
+  }
+
+  .counterValue {
+    font-size: 2rem;
+  }
+
+  .counterLabel {
+    font-size: 0.75rem;
+  }
+}

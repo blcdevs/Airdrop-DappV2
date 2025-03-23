@@ -1,0 +1,60 @@
+# Root dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Web3 folder
+/web3/node_modules
+# /web3/.env
+/web3/coverage
+/web3/coverage.json
+/web3/typechain
+/web3/typechain-types
+/web3/cache
+# /web3/artifacts
+/web3/deployments/localhost
+/web3/.openzeppelin
+
+# Frontend Next.js
+/.next/
+/out/
+/build
+
+# misc
+.DS_Store
+*.pem
+.vscode
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+# .env*.local
+.env
+.env.development
+.env.production
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# logs
+logs
+*.log
+
+# contract size
+.contract-sizes
+
+# gas reporter
+gas-report.txt

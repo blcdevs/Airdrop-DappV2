@@ -1,0 +1,499 @@
+/* AdminDashboard.module.css */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #E0AD6B;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: #E0AD6B;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.tabs {
+  display: flex;
+  padding: 1rem 1.5rem 0;
+  border-bottom: 1px solid #333;
+  gap: 1rem;
+}
+
+.tabButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: none;
+  color: #888;
+  cursor: pointer;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tabButton.active {
+  color: #E0AD6B;
+  border-bottom-color: #E0AD6B;
+}
+
+.content {
+  padding: 1.5rem;
+}
+
+/* Overview Tab */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.statCard {
+  background: #2a2a2a;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.statCard h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #E0AD6B;
+  margin: 0;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status.active {
+  background-color: #065f46;
+  color: #34d399;
+}
+
+.status.inactive {
+  background-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+/* Settings Tab */
+.settingGroup {
+  background-color: #2a2a2a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.settingGroup h3 {
+  margin: 0;
+  margin-bottom: 1rem;
+  color: #E0AD6B;
+}
+
+.inputGroup {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.inputGroup input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: white;
+  font-size: 0.875rem;
+}
+
+.inputGroup button {
+  padding: 0.75rem 1.5rem;
+  background-color: #E0AD6B;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.inputGroup button:hover {
+  background-color: #c89b5f;
+}
+
+.withdrawButton {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #E0AD6B;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.withdrawButton:hover {
+  background-color: #c89b5f;
+}
+
+/* Participants Tab */
+.participants {
+  overflow-x: auto;
+}
+
+.participantsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.participantsTable th,
+.participantsTable td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+.participantsTable th {
+  background: #2a2a2a;
+  font-weight: 500;
+  color: #888;
+}
+
+.participationStatus {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  background: #065f46;
+  color: #34d399;
+}
+
+/* Fee Management Styles */
+.fees {
+  display: grid;
+  gap: 2rem;
+}
+
+.feeOverview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.feeManagement {
+  display: grid;
+  gap: 1rem;
+}
+
+.address {
+  font-size: 0.9rem;
+  word-break: break-all;
+  color: #E0AD6B;
+}
+
+/* Action Buttons */
+.actionButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.actionButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dangerButton {
+  background: #991b1b;
+  color: white;
+  border: none;
+}
+
+.dangerButton:hover {
+  background: #7f1d1d;
+}
+
+/* Time Inputs */
+.timeInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Loading State */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Error State */
+.error {
+  color: #ef4444;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Success State */
+.success {
+  color: #10b981;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Tooltip */
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip:hover .tooltipText {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltipText {
+  visibility: hidden;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 10px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modalContent {
+    width: 95%;
+    padding: 1rem;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .inputGroup {
+    flex-direction: column;
+  }
+
+  .inputGroup button {
+    width: 100%;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  .tabButton {
+    padding: 0.5rem 1rem;
+  }
+}
+
+.primaryButton {
+  background-color: #4CAF50;
+  color: white;
+  margin-left: 10px;
+}
+
+.primaryButton:hover {
+  background-color: #45a049;
+}
+
+.actionButtons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Add these styles to your existing AdminDashboard.module.css */
+
+.tasksManagement {
+  padding: 1.5rem;
+}
+
+.createTask {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.taskForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.taskForm input,
+.taskForm textarea,
+.taskForm select {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.taskForm textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.taskForm button {
+  background: #6366f1;
+  color: white;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.taskForm button:hover {
+  background: #4f46e5;
+}
+
+.tasksList {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.taskItem {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.taskInfo {
+  margin-bottom: 1rem;
+}
+
+.taskInfo h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.taskReward {
+  display: inline-block;
+  background: #ecfdf5;
+  color: #047857;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.taskActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.taskActions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.taskActions button:first-child {
+  background: #6366f1;
+  color: white;
+}
+
+.taskActions button:last-child {
+  background: #ef4444;
+  color: white;
+}
+
+.taskActions button:hover {
+  opacity: 0.9;
+}
+
+.editTaskForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.editActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.editActions button:first-child {
+  background: #10b981;
+  color: white;
+}
+
+.editActions button:last-child {
+  background: #6b7280;
+  color: white;
+}

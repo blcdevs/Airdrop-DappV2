@@ -1,0 +1,68 @@
+BSC Testnet Commands
+
+# 1. Compile contracts
+npx hardhat compile
+
+# 2. Deploy to BSC testnet
+npx hardhat run scripts/deploy.js --network bsctest
+
+# 3. Verify Token contract on BSCScan testnet
+npx hardhat verify --network bsctest 0xe93850C9715FCAA68B0b5770083b7954117257E8 
+
+# 4. Verify Airdrop contract on BSCScan testnet
+npx hardhat verify --network bsctest DEPLOYED_AIRDROP_ADDRESS \
+"TOKEN_ADDRESS" \
+"START_TIME" \
+"END_TIME" \
+"TNTC Airdrop" \
+"First community airdrop with referral program"
+
+Example:
+
+npx hardhat verify --network bsctest 0xe93850C9715FCAA68B0b5770083b7954117257E8 \
+  "0x06BbaEe9B9F0c9d896937f9B8B71e190Db75d439" \
+  1672531200 \
+  1675123200 \
+  "Tinseltoken Airdrop" \
+  "First community airdrop with referral program"
+
+
+
+BSC Mainnet Commands
+# 1. Compile contracts
+npx hardhat compile
+
+# 2. Deploy to BSC mainnet
+
+npx hardhat run scripts/deploy.js --network bsctest
+
+npx hardhat run scripts/deploy.js --network bsc
+
+# 3. Verify Token contract on BSCScan mainnet
+npx hardhat verify --network bsc DEPLOYED_TOKEN_ADDRESS
+
+# 4. Verify Airdrop contract on BSCScan mainnet
+npx hardhat verify --network bsc DEPLOYED_AIRDROP_ADDRESS \
+"TOKEN_ADDRESS" \
+"START_TIME" \
+"END_TIME" \
+"TNTC Airdrop" \
+"First community airdrop with referral program"
+
+
+140000000
+
+
+Contract without Count down timer for claim:
+
+NEXT_PUBLIC_ALCHEMY_API_KEY=LL37_X4cMYLghIjJvImRMgpdBCEF5RjA
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=c87b9758c721b75cf076ef3cc19ddd58
+NEXT_PUBLIC_AIRDROP_CONTRACT_ADDRESS=0x570845368D05B4A8D959BCe7f95f281C4866847a
+NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS=0x4185C73428AFE39d69b44e72E15A3F5D9128F87a
+
+NEXT_PUBLIC_ADMIN_ADDRESS=0x0c2d33B8F50501e6f57F69Dd03c1d9185F75b503
+NEXT_PUBLIC_FEE_COLLECTOR=0xc35f93B4bd248C76A8E01C803b81A4d5785C610d
+NEXT_PUBLIC_INITIAL_FEE_AMOUNT=0.00041
+
+NEXT_PUBLIC_FORMSPREE=mpzvwvlp
+NEXT_PUBLIC_VIDEO=6Dyiizlcsd8
