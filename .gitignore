@@ -5,7 +5,7 @@
 
 # Web3 folder
 /web3/node_modules
-# /web3/.env
+/web3/.env
 /web3/coverage
 /web3/coverage.json
 /web3/typechain
