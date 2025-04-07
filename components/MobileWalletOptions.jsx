@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '../context/Web3Context';
 import { getWalletDownloadLinks, checkWalletInstallation } from '../utils/walletHelpers';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 
 const MobileWalletOptions = ({ onDismiss }) => {
-  const { isIOSDevice, isMobileDevice, connectWallet } = useWeb3();
+  const { isIOSDevice, isMobileDevice } = useWeb3();
+  const { openConnectModal } = useConnectModal();
   const [downloadLinks, setDownloadLinks] = useState({});
   const [installedWallets, setInstalledWallets] = useState({
     hasInjectedProvider: false,
@@ -18,8 +20,8 @@ const MobileWalletOptions = ({ onDismiss }) => {
     }
   }, [isMobileDevice]);
   
-  const handleConnectWallet = async () => {
-    await connectWallet();
+  const handleConnectWallet = () => {
+    openConnectModal();
     if (onDismiss) onDismiss();
   };
   
@@ -38,7 +40,7 @@ const MobileWalletOptions = ({ onDismiss }) => {
           </svg>
         </button>
         
-        <h2 className="text-xl font-bold text-white mb-6 text-center">Connect Your Wallet</h2>
+        <h2 className="text-xl font-bold text-white mb-6 text-center">Wallet Connection Help</h2>
         
         {installedWallets.hasInjectedProvider ? (
           <div className="mb-6">
@@ -47,9 +49,9 @@ const MobileWalletOptions = ({ onDismiss }) => {
               onClick={handleConnectWallet}
               className="w-full bg-[#E0AD6B] hover:bg-[#d8953d] text-white py-3 px-4 rounded-lg font-medium mb-2 flex items-center justify-center"
             >
-              <span>Connect with {installedWallets.isMetaMask ? 'MetaMask' : installedWallets.isTrust ? 'Trust Wallet' : 'Browser Wallet'}</span>
+              <span>Open Standard Connection Dialog</span>
             </button>
-            <p className="text-sm text-gray-400">Use the wallet that's already installed in your browser</p>
+            <p className="text-sm text-gray-400">Use the wallet that's installed in your browser</p>
           </div>
         ) : (
           <div className="mb-6">
@@ -115,7 +117,7 @@ const MobileWalletOptions = ({ onDismiss }) => {
             onClick={handleConnectWallet}
             className="w-full mt-4 bg-[#E0AD6B] hover:bg-[#d8953d] text-white py-2 px-4 rounded-lg font-medium"
           >
-            Try Connecting Again
+            Open Standard Connection Dialog
           </button>
         </div>
       </div>

@@ -30,17 +30,6 @@ export const CustomConnectButton = () => {
     };
   }, [connectionError]);
 
-  const handleDirectConnect = async () => {
-    setIsConnecting(true);
-    try {
-      await connectWallet();
-    } catch (error) {
-      console.error("Connection error:", error);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   // For devices that need special handling (like iOS)
   const getWalletAppLinks = () => {
     if (!isMobileDevice) return null;
@@ -49,8 +38,15 @@ export const CustomConnectButton = () => {
       <div className="mt-4 flex flex-col gap-2">
         <button
           onClick={() => setShowMobileOptions(true)}
-          className="text-sm text-[#E0AD6B] hover:underline"
+          className="text-sm text-gray-500 hover:text-[#E0AD6B] hover:underline flex items-center justify-center"
+          style={{
+            padding: "8px 16px",
+            border: "1px dashed #ccc",
+            borderRadius: "20px",
+            background: "transparent"
+          }}
         >
+          <i className="fas fa-question-circle mr-2"></i>
           Need help connecting? Click here
         </button>
       </div>
@@ -71,16 +67,6 @@ export const CustomConnectButton = () => {
           const ready = mounted;
           const connected = ready && account && chain;
 
-          const handleConnect = () => {
-            if (isMobileDevice) {
-              // Show mobile options dialog for mobile devices
-              setShowMobileOptions(true);
-            } else {
-              // Standard desktop flow using RainbowKit modal
-              openConnectModal();
-            }
-          };
-
           return (
             <div
               {...(!ready && {
@@ -97,10 +83,14 @@ export const CustomConnectButton = () => {
                   return (
                     <div className="flex flex-col items-center">
                       <button
-                        onClick={handleConnect}
+                        onClick={openConnectModal}
                         disabled={isConnecting}
                         className={`bg-[#E0AD6B] hover:bg-[#eba447] text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all duration-200 transform hover:scale-105 
                           ${isConnecting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        style={{
+                          boxShadow: "0 4px 14px rgba(224, 173, 107, 0.4)",
+                          minWidth: "220px"
+                        }}
                       >
                         {isConnecting ? 'Connecting...' : 'Connect Wallet'}
                       </button>
@@ -161,7 +151,7 @@ export const CustomConnectButton = () => {
         }}
       </ConnectButton.Custom>
 
-      {/* Mobile wallet options dialog */}
+      {/* Mobile wallet options dialog - only shown when help button is clicked */}
       {showMobileOptions && (
         <MobileWalletOptions onDismiss={() => setShowMobileOptions(false)} />
       )}

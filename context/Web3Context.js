@@ -193,49 +193,16 @@ export function Web3Provider({ children }) {
     try {
       setConnectionError(null);
       
-      // Find the best connector based on device type
-      let connector;
+      // Let RainbowKit handle all wallet connections through its UI
+      console.log("RainbowKit will handle wallet connections");
       
-      if (deviceInfo.isMobile) {
-        if (deviceInfo.isIOS) {
-          // For iOS, try to find the wallet connector based on browser environment
-          if (deviceInfo.userAgent.includes('crios') || deviceInfo.userAgent.includes('chrome')) {
-            // Chrome on iOS - use walletConnect
-            connector = connectors.find((c) => c.id === "walletConnect");
-          } else if (deviceInfo.userAgent.includes('safari')) {
-            // Safari on iOS - try walletConnect first (more reliable on iOS)
-            connector = connectors.find((c) => c.id === "walletConnect") || 
-                       connectors.find((c) => c.id === "injected");
-          } else {
-            // Default iOS - use walletConnect
-            connector = connectors.find((c) => c.id === "walletConnect");
-          }
-        } else {
-          // For Android, try injected first (better user experience)
-          connector = connectors.find((c) => c.id === "injected") || 
-                     connectors.find((c) => c.id === "walletConnect");
-        }
-      } else {
-        // For desktop, prefer injected
-        connector = connectors.find((c) => c.id === "injected");
-      }
-      
-      // Fallback to walletConnect if no appropriate connector found
-      if (!connector) {
-        connector = connectors.find((c) => c.id === "walletConnect") || connectors[0];
-      }
-      
-      if (connector) {
-        console.log(`Connecting with ${connector.id} on ${deviceInfo.isIOS ? 'iOS' : deviceInfo.isMobile ? 'Android/Mobile' : 'Desktop'}`);
-        await connect({ connector });
-        console.log("Connected with connector:", connector.id);
-      } else {
-        console.error("No suitable connectors found");
-        setConnectionError("No suitable wallet connectors found. Please install MetaMask or another compatible wallet.");
-      }
+      // This function is now just a placeholder since the actual connection
+      // will be handled by RainbowKit's ConnectButton component
+      return true;
     } catch (error) {
       console.error("Error connecting wallet:", error);
       setConnectionError(error.message || "Failed to connect wallet. Please try again.");
+      return false;
     }
   };
 
