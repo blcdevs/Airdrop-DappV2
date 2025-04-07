@@ -4,18 +4,20 @@ import { useNotification } from "../context/NotificationContext";
 import { 
   getDeviceInfo, 
   checkWalletInstallation, 
-  getTokenDeepLink,
-  openTokenInMultipleWallets
+  getTokenDeepLink
 } from "../utils/walletHelpers";
+import { useAccount, useWalletClient } from 'wagmi';
 
 const AddTokenButton = ({ className }) => {
   const { showNotification } = useNotification();
   const { provider } = useWeb3();
+  const { connector } = useAccount();
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [connectedWalletType, setConnectedWalletType] = useState("");
 
   const tokenAddress = process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS;
   const tokenSymbol = "TNTC";
@@ -33,6 +35,40 @@ const AddTokenButton = ({ className }) => {
   // Device detection
   const deviceInfo = getDeviceInfo();
   const walletInfo = checkWalletInstallation();
+
+  // Detect connected wallet type
+  useEffect(() => {
+    const detectWalletType = async () => {
+      if (!window.ethereum) return;
+      
+      let walletType = "";
+      
+      // Check for wallet specific properties
+      if (window.ethereum.isTrust) {
+        walletType = "trust";
+      } else if (window.ethereum.isMetaMask) {
+        walletType = "metamask";
+      } else if (window.ethereum.isCoinbaseWallet) {
+        walletType = "coinbase";
+      } else if (window.ethereum.isTokenPocket) {
+        walletType = "tokenpocket";
+      } else if (window.ethereum.isImToken) {
+        walletType = "imtoken";
+      } else if (connector?.name) {
+        // Get wallet name from connector if available
+        const name = connector.name.toLowerCase();
+        if (name.includes('trust')) walletType = "trust";
+        else if (name.includes('metamask')) walletType = "metamask";
+        else if (name.includes('coinbase')) walletType = "coinbase";
+        else if (name.includes('rainbow')) walletType = "rainbow";
+      }
+      
+      console.log("Detected wallet type:", walletType || "unknown");
+      setConnectedWalletType(walletType);
+    };
+    
+    detectWalletType();
+  }, [connector]);
 
   const copyToClipboard = async () => {
     try {
@@ -76,18 +112,29 @@ const AddTokenButton = ({ className }) => {
     }
   };
 
+  // Open specific wallet with token deep link
+  const openWalletWithToken = (walletType) => {
+    const deepLink = getTokenDeepLink(tokenInfo, walletType);
+    if (deepLink) {
+      console.log(`Opening ${walletType} with deep link: ${deepLink}`);
+      window.location.href = deepLink;
+      return true;
+    }
+    return false;
+  };
+
   const addTokenToWallet = async () => {
     try {
-    setIsLoading(true);
+      setIsLoading(true);
       setLoadingText("Connecting to wallet...");
       setShowError(false);
       
-      // For mobile devices, directly try deep linking to wallet apps for the best experience
+      // For mobile devices
       if (deviceInfo.isMobile) {
-        // First check if there's an injected provider
+        // First check if we can use the provider method
         if (window.ethereum) {
           try {
-            // Try direct method first (works great on Android)
+            // Standard provider method works on most mobile wallets 
             const success = await addTokenViaProvider();
             if (success) {
               setIsLoading(false);
@@ -98,19 +145,44 @@ const AddTokenButton = ({ className }) => {
           }
         }
         
-        // If no provider or provider method failed, try deep links
-    setLoadingText("Opening wallet app...");
-    
-        // For iOS we'll try multiple wallets in sequence
-        // For Android we'll use the most common wallet
-        openTokenInMultipleWallets(tokenInfo);
+        // If provider method failed, try deep links based on detected wallet
+        setLoadingText("Opening wallet app...");
+        
+        let success = false;
+        
+        // First try with the detected wallet type
+        if (connectedWalletType) {
+          success = openWalletWithToken(connectedWalletType);
+        }
+        
+        // If no specific wallet detected or deep link failed, try platform-specific options
+        if (!success) {
+          if (deviceInfo.isIOS) {
+            // For iOS - try Trust Wallet and then MetaMask
+            success = openWalletWithToken("trust") || openWalletWithToken("metamask");
+          } else if (deviceInfo.isAndroid) {
+            // For Android - try Trust Wallet first (more compatible with BSC)
+            success = openWalletWithToken("trust");
+            
+            // If Trust Wallet deep link didn't work, try MetaMask
+            if (!success) {
+              success = openWalletWithToken("metamask");
+            }
+          }
+        }
         
         // Hide loading indicator after a short delay
         setTimeout(() => {
           setIsLoading(false);
-          showNotification("Opening wallet to add token...", "info");
+          if (success) {
+            showNotification("Opening wallet to add token...", "info");
+          } else {
+            setShowError(true);
+            setErrorMessage("Couldn't open wallet app. Please copy the address and add the token manually to your wallet.");
+            copyToClipboard();
+          }
         }, 1000);
-          return;
+        return;
       }
       
       // For desktop, use the provider method
@@ -119,13 +191,13 @@ const AddTokenButton = ({ className }) => {
         if (success) {
           setIsLoading(false);
           return;
+        }
       }
-    }
     
       // If we reach here, automatic methods failed
       setShowError(true);
       setErrorMessage("Couldn't add token automatically. Please copy the address and add it manually to your wallet.");
-        setIsLoading(false);
+      setIsLoading(false);
       copyToClipboard();
     } catch (error) {
       console.error("Add token error:", error);
