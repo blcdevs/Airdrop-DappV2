@@ -189,21 +189,10 @@ export function Web3Provider({ children }) {
     }
   };
 
-  const connectWallet = async () => {
-    try {
-      setConnectionError(null);
-      
-      // Let RainbowKit handle all wallet connections through its UI
-      console.log("RainbowKit will handle wallet connections");
-      
-      // This function is now just a placeholder since the actual connection
-      // will be handled by RainbowKit's ConnectButton component
-      return true;
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
-      setConnectionError(error.message || "Failed to connect wallet. Please try again.");
-      return false;
-    }
+  // Simplified connectWallet function - no longer used, but kept for compatibility
+  const connectWallet = () => {
+    console.log("RainbowKit handles all wallet connections directly");
+    return true;
   };
 
   return (
