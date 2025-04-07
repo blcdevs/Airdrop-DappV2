@@ -4,6 +4,11 @@ import { ethers } from "ethers";
 import { useAccount, useChainId, useConnect } from "wagmi";
 import { useEthersProvider, useEthersSigner } from "../provider/hooks";
 import ABI from "../web3/artifacts/contracts/TNTCAirdrop.sol/TNTCAirdrop.json";
+import { 
+  getDeviceInfo, 
+  cleanupWalletSessions,
+  handleAppVisibilityChange
+} from "../utils/walletHelpers";
 
 const Web3Context = createContext();
 
@@ -15,6 +20,8 @@ export function Web3Provider({ children }) {
   const [contract, setContract] = useState(null);
   const [feeAmount, setFeeAmount] = useState(INITIAL_FEE_AMOUNT);
   const [feeCollector, setFeeCollector] = useState(INITIAL_FEE_COLLECTOR);
+  const [connectionError, setConnectionError] = useState(null);
+  const [deviceInfo, setDeviceInfo] = useState({ isMobile: false, isIOS: false });
 
   // Wagmi hooks v2
   const { address, isConnected } = useAccount();
@@ -28,6 +35,30 @@ export function Web3Provider({ children }) {
   const contractAddress = CONTRACT_ADDRESS;
   const contractABI = ABI.abi;
 
+  // Set device info on mount
+  useEffect(() => {
+    setDeviceInfo(getDeviceInfo());
+    
+    // Clean up any stale wallet sessions
+    cleanupWalletSessions();
+    
+    // Setup visibility change handler for app switching
+    const cleanupVisibilityHandler = handleAppVisibilityChange(() => {
+      // Check connection after returning to the app
+      if (window.ethereum && typeof window.ethereum.isConnected === 'function') {
+        const isConnected = window.ethereum.isConnected();
+        if (!isConnected && address) {
+          console.log("Connection lost during app switch");
+          setConnectionError("Connection lost. Please reconnect your wallet.");
+        }
+      }
+    });
+    
+    return () => {
+      cleanupVisibilityHandler();
+    };
+  }, []);
+
   // Initialize contract
   useEffect(() => {
     if (signer && provider) {
@@ -39,9 +70,11 @@ export function Web3Provider({ children }) {
         );
         setContract(contract);
         getFeeDetails(contract);
+        setConnectionError(null); // Clear any connection errors on success
       } catch (error) {
         console.error("Error initializing contract:", error);
         setContract(null);
+        setConnectionError("Failed to initialize contract. Please try reconnecting your wallet.");
       }
     }
   }, [signer, provider]);
@@ -158,12 +191,51 @@ export function Web3Provider({ children }) {
 
   const connectWallet = async () => {
     try {
-      const injectedConnector = connectors.find((c) => c.id === "injected");
-      if (injectedConnector) {
-        await connect({ connector: injectedConnector });
+      setConnectionError(null);
+      
+      // Find the best connector based on device type
+      let connector;
+      
+      if (deviceInfo.isMobile) {
+        if (deviceInfo.isIOS) {
+          // For iOS, try to find the wallet connector based on browser environment
+          if (deviceInfo.userAgent.includes('crios') || deviceInfo.userAgent.includes('chrome')) {
+            // Chrome on iOS - use walletConnect
+            connector = connectors.find((c) => c.id === "walletConnect");
+          } else if (deviceInfo.userAgent.includes('safari')) {
+            // Safari on iOS - try walletConnect first (more reliable on iOS)
+            connector = connectors.find((c) => c.id === "walletConnect") || 
+                       connectors.find((c) => c.id === "injected");
+          } else {
+            // Default iOS - use walletConnect
+            connector = connectors.find((c) => c.id === "walletConnect");
+          }
+        } else {
+          // For Android, try injected first (better user experience)
+          connector = connectors.find((c) => c.id === "injected") || 
+                     connectors.find((c) => c.id === "walletConnect");
+        }
+      } else {
+        // For desktop, prefer injected
+        connector = connectors.find((c) => c.id === "injected");
+      }
+      
+      // Fallback to walletConnect if no appropriate connector found
+      if (!connector) {
+        connector = connectors.find((c) => c.id === "walletConnect") || connectors[0];
+      }
+      
+      if (connector) {
+        console.log(`Connecting with ${connector.id} on ${deviceInfo.isIOS ? 'iOS' : deviceInfo.isMobile ? 'Android/Mobile' : 'Desktop'}`);
+        await connect({ connector });
+        console.log("Connected with connector:", connector.id);
+      } else {
+        console.error("No suitable connectors found");
+        setConnectionError("No suitable wallet connectors found. Please install MetaMask or another compatible wallet.");
       }
     } catch (error) {
       console.error("Error connecting wallet:", error);
+      setConnectionError(error.message || "Failed to connect wallet. Please try again.");
     }
   };
 
@@ -186,6 +258,9 @@ export function Web3Provider({ children }) {
         updateClaimCooldown,
         getAllTasks, 
         getUserReferralInfo,
+        connectionError,
+        isMobileDevice: deviceInfo.isMobile,
+        isIOSDevice: deviceInfo.isIOS,
       }}
     >
       {children}
