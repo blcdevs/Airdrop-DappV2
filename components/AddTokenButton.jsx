@@ -50,24 +50,24 @@ const AddTokenButton = ({ className }) => {
     try {
       const provider = window.ethereum;
       if (!provider) throw new Error("No wallet provider detected");
-      
-      const wasAdded = await provider.request({
-        method: 'wallet_watchAsset',
-        params: {
-          type: 'ERC20',
-          options: {
-            address: tokenAddress,
-            symbol: tokenSymbol,
-            decimals: tokenDecimals,
-            image: tokenImage,
+
+        const wasAdded = await provider.request({
+          method: 'wallet_watchAsset',
+          params: {
+            type: 'ERC20',
+            options: {
+              address: tokenAddress,
+              symbol: tokenSymbol,
+              decimals: tokenDecimals,
+              image: tokenImage,
+            },
           },
-        },
-      });
-      
-      if (wasAdded) {
-        showNotification("Token added to wallet successfully!", "success");
+        });
+
+        if (wasAdded) {
+          showNotification("Token added to wallet successfully!", "success");
         return true;
-      } else {
+        } else {
         throw new Error("User rejected the request");
       }
     } catch (error) {
@@ -78,7 +78,7 @@ const AddTokenButton = ({ className }) => {
 
   const addTokenToWallet = async () => {
     try {
-      setIsLoading(true);
+    setIsLoading(true);
       setLoadingText("Connecting to wallet...");
       setShowError(false);
       
@@ -99,8 +99,8 @@ const AddTokenButton = ({ className }) => {
         }
         
         // If no provider or provider method failed, try deep links
-        setLoadingText("Opening wallet app...");
-        
+    setLoadingText("Opening wallet app...");
+    
         // For iOS we'll try multiple wallets in sequence
         // For Android we'll use the most common wallet
         openTokenInMultipleWallets(tokenInfo);
@@ -110,8 +110,8 @@ const AddTokenButton = ({ className }) => {
           setIsLoading(false);
           showNotification("Opening wallet to add token...", "info");
         }, 1000);
-        return;
-      } 
+          return;
+      }
       
       // For desktop, use the provider method
       if (window.ethereum) {
@@ -119,13 +119,13 @@ const AddTokenButton = ({ className }) => {
         if (success) {
           setIsLoading(false);
           return;
-        }
       }
-      
+    }
+    
       // If we reach here, automatic methods failed
       setShowError(true);
       setErrorMessage("Couldn't add token automatically. Please copy the address and add it manually to your wallet.");
-      setIsLoading(false);
+        setIsLoading(false);
       copyToClipboard();
     } catch (error) {
       console.error("Add token error:", error);

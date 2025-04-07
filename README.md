@@ -18,6 +18,10 @@ A decentralized application (DApp) for managing token airdrops with referral sys
   - View transaction history
   - Copy and share referral links
   - Check airdrop details and rewards
+- **Error Handling**:
+  - User-friendly error messages
+  - Clear guidance for insufficient funds scenarios
+  - Improved handling of wallet connectivity issues
 
 ### Admin Features
 - **Admin Panel**: Special access for contract owner
@@ -117,6 +121,19 @@ web3-airdrop-dapp/
 - Gas fee estimation
 - Transaction confirmation handling
 - Error boundary implementation
+- Enhanced error handling for transaction errors:
+  - Detailed messages for insufficient BNB/ETH balance
+  - User-friendly notifications for rejection, network errors, and reverts
+  - Proper JSON-RPC error parsing and handling
+  - Consistent error messaging across the application
+
+## Recent Updates
+
+### Improved Error Handling
+- **Transaction Error Management**: Enhanced the error handling system to provide clear, user-friendly messages for common blockchain errors
+- **Insufficient Funds Detection**: Added specialized detection for insufficient gas fee errors that shows helpful guidance instead of technical error codes
+- **Standardized Error Responses**: Implemented a consistent error message format across all transaction types for improved user experience
+- **Multiple Error Formats Support**: Added support for parsing various error formats from different wallet providers and JSON-RPC responses
 
 ## Contributing
 

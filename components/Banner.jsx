@@ -7,6 +7,7 @@ import CountdownTimer from "./CountdownTimer/CountdownTimer";
 import AirdropBanner from "./AirdropBanner/AirdropBanner";
 import UserDetailsModal from "./UserDetailsModal/UserDetailsModal";
 import AddTokenButton from "./AddTokenButton"; 
+import { useNotification } from "../context/NotificationContext";
 
 const ADMIN = process.env.NEXT_PUBLIC_ADMIN_ADDRESS;
 
@@ -24,7 +25,9 @@ const Banner = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [nextClaimTime, setNextClaimTime] = useState(0);
   const [canClaim, setCanClaim] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { contract } = useWeb3();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     // Simplified referral detection that prioritizes query parameters
@@ -97,15 +100,30 @@ const Banner = ({
   };
 
   const handleClaimClick = () => {
-    if (!canClaim) {
-      const timeLeft = formatTimeLeft(nextClaimTime);
-      alert(`Please wait ${timeLeft} before claiming again`);
+    if (isProcessing) {
+      showNotification("Transaction is being processed, please wait...", "info");
       return;
     }
-    if (isReferral) {
-      handleParticipate();
-    } else {
-      handleParticipateWithoutReferral();
+    
+    if (!canClaim) {
+      const timeLeft = formatTimeLeft(nextClaimTime);
+      showNotification(`Please wait ${timeLeft} before claiming again`, "warning");
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      if (isReferral) {
+        handleParticipate()
+          .finally(() => setIsProcessing(false));
+      } else {
+        handleParticipateWithoutReferral()
+          .finally(() => setIsProcessing(false));
+      }
+    } catch (error) {
+      setIsProcessing(false);
+      console.error("Error in claim click:", error);
     }
   };
 
