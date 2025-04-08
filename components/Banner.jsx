@@ -133,7 +133,7 @@ const Banner = ({
                   data-animation-delay="1.3s"
                 >
                   Tinseltoken (TNTC) is offering a massive airdrop of 140 million tokens (70% of total supply). 
-                  Distribute in January 2025, this airdrop aims to democratize blockchain access and foster global community engagement.
+                  Distribute in April 2025, this airdrop aims to democratize blockchain access and foster global community engagement.
                    Claim your free TNTC tokens through our simple 3-step process!
                 </p>
                 <div
