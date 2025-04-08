@@ -239,7 +239,7 @@ const Dashboard = () => {
             <li 
               className={styles.navItem}
             >
-              <Link href="/">
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
                 <i className="fas fa-home"></i>
                 <span>Back Home</span>
               </Link>
@@ -247,14 +247,20 @@ const Dashboard = () => {
 
             <li 
               className={`${styles.navItem} ${activeMenu === 'dashboard' ? styles.active : ''}`}
-              onClick={() => setActiveMenu('dashboard')}
+              onClick={() => {
+                setActiveMenu('dashboard');
+                setIsMobileMenuOpen(false);
+              }}
             >
               <i className="fas fa-chart-line"></i>
               <span>Dashboard</span>
             </li>
             <li 
               className={`${styles.navItem} ${activeMenu === 'tasks' ? styles.active : ''}`}
-              onClick={() => setActiveMenu('tasks')}
+              onClick={() => {
+                setActiveMenu('tasks');
+                setIsMobileMenuOpen(false);
+              }}
             >
               <i className="fas fa-tasks"></i>
               <span>Tasks</span>
