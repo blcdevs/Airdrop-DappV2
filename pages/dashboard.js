@@ -7,6 +7,7 @@ import styles from '../styles/DashboardLayout.module.css';
 import { ethers } from 'ethers';
 import Link from 'next/link';
 import { useNotification } from "../context/NotificationContext";
+import { handleTransactionError } from "../utils/errorHandling";
 
 const Dashboard = () => {
   const router = useRouter();
@@ -182,13 +183,7 @@ const Dashboard = () => {
 
       showNotification("You have successfully claimed your airdrop!", "success");
     } catch (error) {
-      console.error("Error:", error);
-      showNotification(
-        error.message.includes("user rejected") 
-          ? "Transaction was rejected." 
-          : "Failed to claim airdrop. Please try again.",
-        "error"
-      );
+      handleTransactionError(error, showNotification);
     }
   };
 

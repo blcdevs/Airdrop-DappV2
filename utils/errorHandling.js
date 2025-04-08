@@ -1,6 +1,83 @@
 export const handleTransactionError = (error, showNotification) => {
     console.error("Transaction error:", error);
     
+    // Function to deeply inspect error objects for insufficient funds messages
+    const containsInsufficientFundsMessage = (obj) => {
+      if (!obj || typeof obj !== 'object') return false;
+      
+      // Check direct message properties
+      if (typeof obj.message === 'string' && obj.message.includes("insufficient funds")) return true;
+      
+      // Check data.message
+      if (obj.data && typeof obj.data.message === 'string' && obj.data.message.includes("insufficient funds")) return true;
+      
+      // Check for stringified JSON in stack that might contain error info
+      if (typeof obj.stack === 'string') {
+        try {
+          // Some errors have JSON stringified in the stack
+          const stackJsonMatch = obj.stack.match(/{[\s\S]*}/);
+          if (stackJsonMatch) {
+            const parsedStack = JSON.parse(stackJsonMatch[0]);
+            if (
+              parsedStack.data && 
+              typeof parsedStack.data.message === 'string' && 
+              parsedStack.data.message.includes("insufficient funds")
+            ) {
+              return true;
+            }
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+      
+      // Recursively check nested error objects
+      if (obj.error) return containsInsufficientFundsMessage(obj.error);
+      if (obj.data) return containsInsufficientFundsMessage(obj.data);
+      
+      return false;
+    };
+    
+    // Check for insufficient funds errors using our deep inspection
+    if (containsInsufficientFundsMessage(error)) {
+      showNotification("Insufficient BNB for gas fees and transaction value. Please add BNB to your wallet and try again.", "error");
+      return;
+    }
+    
+    // Check specifically for JSON-RPC errors that often contain nested error data
+    if (error && error.code === -32603) {
+      console.log("Handling JSON-RPC error:", error);
+      
+      // Extract the nested error data that contains the actual error message
+      const errorData = error.data || {};
+      const dataMessage = errorData.message || '';
+      
+      // Check if the nested error contains insufficient funds message
+      if (dataMessage.includes("insufficient funds")) {
+        showNotification("Insufficient BNB for gas fees and transaction value. Please add BNB to your wallet and try again.", "error");
+        return;
+      }
+    }
+    
+    // Check for RPC errors that contain insufficient funds messages in other formats
+    if (error && typeof error === 'object') {
+      // Check for nested error messages that might contain "insufficient funds"
+      const errorMessage = error.message || '';
+      const errorData = error.data || {};
+      const dataMessage = errorData.message || '';
+      
+      // Check various error formats that might indicate insufficient funds
+      if (
+        errorMessage.includes("insufficient funds") || 
+        dataMessage.includes("insufficient funds") || 
+        (error.error && error.error.message && error.error.message.includes("insufficient funds"))
+      ) {
+        showNotification("Insufficient BNB for gas fees and transaction value. Please add BNB to your wallet and try again.", "error");
+        return;
+      }
+    }
+    
+    // Handle other known error types
     const errorMessages = {
       ACTION_REJECTED: "Transaction cancelled by user",
       INSUFFICIENT_FUNDS: "Insufficient BNB for gas fees. Please get BNB from any exchange and try again...",
@@ -11,7 +88,7 @@ export const handleTransactionError = (error, showNotification) => {
   
     const errorMessage = errorMessages[error.code] || error.message || "Transaction failed";
     showNotification(errorMessage, "error");
-  };
+};
 
 // Handle contract errors and return user-friendly messages
 export const handleContractError = (error) => {
