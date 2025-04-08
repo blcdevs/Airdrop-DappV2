@@ -8,54 +8,20 @@ export const handleTransactionError = (error, showNotification) => {
       UNPREDICTABLE_GAS_LIMIT: "Transaction cannot be completed. Please try again.",
       CALL_EXCEPTION: "Contract call failed. Please try again.",
     };
-
-    // Check if it's a JSON-RPC error with insufficient funds
-    if (error?.code === -32603 || error?.code === -32000) {
-      const errorMsg = error.message || (error.data && error.data.message) || "";
-      const errorString = JSON.stringify(error);
-
-      if (
-        errorMsg.includes("insufficient funds") || 
-        errorString.includes("insufficient funds") ||
-        (error.data && error.data.message && error.data.message.includes("insufficient funds"))
-      ) {
-        showNotification("⚠️ Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.", "error");
-        return;
-      }
-    }
   
-    // Default error handling
     const errorMessage = errorMessages[error.code] || error.message || "Transaction failed";
     showNotification(errorMessage, "error");
   };
 
 // Handle contract errors and return user-friendly messages
 export const handleContractError = (error) => {
-  // Check for JSON-RPC errors with insufficient funds
-  if (error?.code === -32603) {
-    if (error.data && error.data.message && error.data.message.includes("insufficient funds")) {
-      return "Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.";
-    }
-    // Try to parse the error message if it's a stringified JSON
-    try {
-      if (typeof error.message === 'string' && error.message.includes('{')) {
-        const errorObj = JSON.parse(error.message.substring(error.message.indexOf('{')));
-        if (errorObj.data && errorObj.data.message && errorObj.data.message.includes("insufficient funds")) {
-          return "Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.";
-        }
-      }
-    } catch (e) {
-      // Ignore parse errors, continue with normal error handling
-    }
-  }
-
   const errorMessage = error.message || "Transaction failed";
   
   // Check for common contract revert reasons
   if (errorMessage.includes("user rejected transaction")) {
     return "Transaction was rejected by the user";
   } else if (errorMessage.includes("insufficient funds")) {
-    return "Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.";
+    return "Insufficient funds to complete this transaction";
   } else if (errorMessage.includes("Cooldown period not elapsed")) {
     return "Please wait for the cooldown period to end before claiming again";
   } else if (errorMessage.includes("Airdrop is not active")) {
@@ -65,53 +31,6 @@ export const handleContractError = (error) => {
   } else {
     return errorMessage;
   }
-};
-
-// Get a user-friendly error message from various error formats 
-export const parseWalletError = (error) => {
-  if (!error) return "An unknown error occurred";
-  
-  // Handle structured errors
-  if (error.code === 4001 || (error.code && error.code === "ACTION_REJECTED")) {
-    return "Transaction was rejected by user";
-  }
-  
-  // Handle JSON-RPC errors
-  if (error.code === -32603 || error.code === -32000) {
-    // Check error message and error.data
-    if (error.data && error.data.message) {
-      if (error.data.message.includes("insufficient funds")) {
-        return "Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.";
-      }
-    }
-    
-    // Try to parse error message if it's JSON
-    try {
-      if (typeof error.message === 'string') {
-        if (error.message.includes("insufficient funds")) {
-          return "Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.";
-        }
-        
-        // Try to extract JSON from error message
-        if (error.message.includes('{')) {
-          const jsonStart = error.message.indexOf('{');
-          const errorObj = JSON.parse(error.message.substring(jsonStart));
-          
-          if (errorObj.data && errorObj.data.message) {
-            if (errorObj.data.message.includes("insufficient funds")) {
-              return "Insufficient BNB to pay for gas fees. Please add some BNB to your wallet and try again.";
-            }
-            return errorObj.data.message;
-          }
-        }
-      }
-    } catch (e) {
-      // Parsing failed, continue
-    }
-  }
-  
-  // Default message
-  return error.message || "Transaction failed. Please try again.";
 };
 
 // Track and log referral activity for debugging

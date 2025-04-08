@@ -3,7 +3,7 @@ import { useWeb3 } from "../context/Web3Context";
 import { ethers } from "ethers";
 import { useAccount } from "wagmi";
 import { useNotification } from "../context/NotificationContext";
-import { trackReferral, analyzeReferralUrl, parseWalletError } from "../utils/errorHandling";
+import { trackReferral, analyzeReferralUrl } from "../utils/errorHandling";
 
 import MainHeader from "../components/MainHeader";
 import Banner from "../components/Banner";
@@ -152,9 +152,7 @@ const index = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      // Use the enhanced error parser to provide a user-friendly message
-      const errorMessage = parseWalletError(error);
-      showNotification(errorMessage, "error");
+      showNotification(error.message, "error");
     } finally {
       setLoading(false);
       setAmount("");
@@ -202,9 +200,7 @@ const index = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      // Use the enhanced error parser to provide a user-friendly message
-      const errorMessage = parseWalletError(error);
-      showNotification(errorMessage, "error");
+      showNotification(error.message, "error");
     } finally {
       setLoading(false);
       setAmount("");

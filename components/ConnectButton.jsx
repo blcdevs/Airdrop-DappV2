@@ -1,30 +1,6 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useWeb3 } from "../context/Web3Context";
-import { useState, useEffect } from "react";
 
 export const CustomConnectButton = () => {
-  const { 
-    connectionError, 
-    isMobileDevice 
-  } = useWeb3();
-  
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [showError, setShowError] = useState(false);
-
-  // Clear error message after 5 seconds
-  useEffect(() => {
-    let timer;
-    if (connectionError) {
-      setShowError(true);
-      timer = setTimeout(() => {
-        setShowError(false);
-      }, 5000);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [connectionError]);
-
   return (
     <ConnectButton.Custom>
       {({
@@ -37,6 +13,25 @@ export const CustomConnectButton = () => {
       }) => {
         const ready = mounted;
         const connected = ready && account && chain;
+
+        const handleConnect = () => {
+          if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Check if MetaMask or Trust Wallet is installed
+            const isMetaMaskInstalled = !!window.ethereum?.isMetaMask;
+            const isTrustWalletInstalled = !!window.ethereum?.isTrust;
+
+            if (isMetaMaskInstalled || isTrustWalletInstalled) {
+              // Attempt deep linking
+              setTimeout(openConnectModal, 100);
+            } else {
+              // Fallback to WalletConnect QR code
+              openConnectModal();
+            }
+          } else {
+            // Desktop or non-mobile browser
+            openConnectModal();
+          }
+        };
 
         return (
           <div
@@ -52,26 +47,12 @@ export const CustomConnectButton = () => {
             {(() => {
               if (!connected) {
                 return (
-                  <div className="flex flex-col items-center">
-                    <button
-                      onClick={openConnectModal}
-                      disabled={isConnecting}
-                      className={`bg-[#E0AD6B] hover:bg-[#eba447] text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all duration-200 transform hover:scale-105 
-                        ${isConnecting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                      style={{
-                        boxShadow: "0 4px 14px rgba(224, 173, 107, 0.4)",
-                        minWidth: "220px"
-                      }}
-                    >
-                      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-                    </button>
-                    
-                    {showError && connectionError && (
-                      <div className="mt-2 text-red-500 text-sm bg-red-100 p-2 rounded">
-                        {connectionError}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    onClick={handleConnect}
+                    className="bg-[#E0AD6B] hover:bg-[#eba447] text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                  >
+                    Connect Wallet
+                  </button>
                 );
               }
 
