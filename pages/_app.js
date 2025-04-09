@@ -21,7 +21,7 @@ function MyApp({ Component, pageProps }) {
   const siteTitle = "Tinseltoken Airdrop DApp";
   const siteDescription = "Claim your Tinseltoken (TNTC) airdrop tokens and earn rewards through referrals";
   const siteUrl = "https://thetinseltoken.com";
-  const siteImage = "https://thetinseltoken.com/logo.png";
+  const siteImage = "https://thetinseltoken.com/assets/images/logo.png";
 
   return (
     <>
