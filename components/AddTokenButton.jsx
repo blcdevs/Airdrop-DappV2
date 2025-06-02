@@ -192,17 +192,17 @@ const AddTokenButton = ({ className }) => {
         if (isAndroid) {
           return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
         } else if (isIOS) {
-          // iOS deep links - need to try multiple formats
-          return `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&type=BEP20`;
+          // Updated format for Trust Wallet iOS
+          // The format 'trust://add_token' doesn't work on newer versions
+          // Using the universal link format instead
+          return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
         }
         break;
       
       case 'metamask':
-        if (isAndroid) {
-          return `https://metamask.app.link/add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&chainId=${chainId}`;
-        } else if (isIOS) {
-          return `metamask://add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&chainId=${chainId}`;
-        }
+        // For both iOS and Android, use the universal https link format
+        // This is more compatible with mobile browsers and avoids the "invalid address" error
+        return `https://metamask.app.link/add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&chainId=${chainId}`;
         break;
       
       case 'coinbase':
@@ -216,22 +216,15 @@ const AddTokenButton = ({ className }) => {
         
       case 'walletconnect':
         // Try Trust Wallet as a fallback for WalletConnect
-        if (isAndroid) {
-          return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
-        } else if (isIOS) {
-          return `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&type=BEP20`;
-        }
+        // Using universal link format for both platforms
+        return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
         break;
         
       case 'unknown':
       default:
-        // Try to guess the best deep link based on platform
-        if (isAndroid) {
-          return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
-        } else if (isIOS) {
-          return `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&type=BEP20`;
-        }
-        return null;
+        // Try Trust Wallet as default fallback using universal link
+        return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
+        // This works for both Android and iOS
     }
   };
 
@@ -245,15 +238,103 @@ const AddTokenButton = ({ className }) => {
       const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
       const isAndroid = /android/i.test(navigator.userAgent);
       const isMobile = isMobileDevice();
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isTrustWallet = userAgent.includes('trust') || window.ethereum?.isTrust;
+      
       console.log("Environment:", { 
         isIOS, 
         isAndroid, 
         isMobile, 
+        isTrustWallet,
         connectedWalletType,
         inAppBrowser: window.ethereum !== undefined,
-        hasConnectorClient: connectorClient !== undefined,
-        hasProvider: provider !== undefined
+        userAgent
       });
+      
+      // For Trust Wallet specifically - if we detect it and we're on mobile, directly use the universal link
+      if (isTrustWallet && isMobile) {
+        console.log("Using Trust Wallet deep linking directly...");
+        const deepLink = `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
+        
+        setLoadingProgress(70);
+        setLoadingText("Opening Trust Wallet...");
+        console.log("Using deep link:", deepLink);
+        
+        // Copy address to clipboard as a fallback
+        copyToClipboard();
+        
+        // Open in a new tab for better compatibility
+        window.open(deepLink, '_blank');
+        
+        setTimeout(() => {
+          setIsLoading(false);
+          showNotification("Redirecting to Trust Wallet. Token address copied to clipboard as backup.", "info");
+        }, 1500);
+        return;
+      }
+      
+      // For MetaMask mobile browser - special handling
+      const isMetaMask = window.ethereum?.isMetaMask || userAgent.includes('metamask');
+      if (isMetaMask && isMobile) {
+        console.log("Detected MetaMask mobile browser...");
+        
+        try {
+          setLoadingProgress(50);
+          setLoadingText("Adding token to MetaMask mobile...");
+          
+          // For MetaMask mobile browser, we need to use the direct provider method
+          if (window.ethereum && window.ethereum.isMetaMask) {
+            try {
+              // Direct native method for adding token when already in MetaMask browser
+              const wasAdded = await window.ethereum.request({
+                method: 'wallet_watchAsset',
+                params: {
+                  type: 'ERC20',
+                  options: {
+                    address: tokenAddress,
+                    symbol: tokenSymbol,
+                    decimals: tokenDecimals,
+                    image: tokenImage,
+                  },
+                },
+              });
+              
+              setLoadingProgress(100);
+              setTimeout(() => {
+                setIsLoading(false);
+                if (wasAdded) {
+                  showNotification("Token added to MetaMask successfully!", "success");
+                } else {
+                  showNotification("You declined to add the token", "info");
+                }
+              }, 500);
+              return;
+            } catch (error) {
+              console.log("Error with direct MetaMask method:", error);
+              // Instead of deep linking which causes Safari errors, we'll use a simple copy fallback
+              copyToClipboard();
+              setLoadingProgress(100);
+              setTimeout(() => {
+                setIsLoading(false);
+                showNotification("Could not automatically add token to MetaMask. The token address has been copied - please add it manually in your wallet settings.", "info");
+              }, 500);
+              return;
+            }
+          }
+          
+          // If we're here, window.ethereum exists but isn't MetaMask's provider
+          // Copy the address as a reliable fallback rather than using deep linking which causes errors
+          copyToClipboard();
+          setLoadingProgress(100);
+          setTimeout(() => {
+            setIsLoading(false);
+            showNotification("MetaMask detected but couldn't add token automatically. The token address has been copied - please add it manually in your wallet settings.", "info");
+          }, 500);
+          return;
+        } catch (error) {
+          console.error("Error adding token to MetaMask mobile:", error);
+        }
+      }
       
       // APPROACH 1: Try window.ethereum (in-app browser detection)
       if (window.ethereum) {
@@ -337,7 +418,7 @@ const AddTokenButton = ({ className }) => {
         console.log("Using mobile deep linking fallback...");
         
         // First, determine which wallet to use (either detected or best guess)
-        const walletToUse = connectedWalletType || (isIOS ? 'trust' : 'metamask');
+        const walletToUse = connectedWalletType || 'trust'; // Default to Trust Wallet for universal compatibility
         const deepLink = getWalletDeepLink(walletToUse);
         
         if (deepLink) {
@@ -345,22 +426,17 @@ const AddTokenButton = ({ className }) => {
           setLoadingText("Opening wallet app...");
           console.log("Opening deep link:", deepLink);
           
-          // For iOS, create temporary anchor element to navigate
+          // Copy address to clipboard as a fallback
+          copyToClipboard();
+          
+          // For iOS Safari, we need to try multiple approaches
           if (isIOS) {
-            const a = document.createElement('a');
-            a.href = deepLink;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
+            // Method 1: Open in new window
+            window.open(deepLink, '_blank');
             
-            // Small delay before removing the element
+            // Method 2: After small delay, try direct location change
             setTimeout(() => {
-              document.body.removeChild(a);
-              
-              // After removing, try a fallback method for stubborn browsers
-              setTimeout(() => {
-                window.location.href = deepLink;
-              }, 100);
+              window.location.href = deepLink;
             }, 300);
           } else {
             // For Android, direct navigation works better
@@ -370,8 +446,7 @@ const AddTokenButton = ({ className }) => {
           // Show a completion message
           setTimeout(() => {
             setIsLoading(false);
-            showNotification("Wallet app should be opening. Please check your wallet app or add token manually with the copied address.", "info");
-            copyToClipboard(); // Automatically copy as a convenience
+            showNotification("Wallet app should be opening. Token address copied to clipboard as backup.", "info");
           }, 1500);
           return;
         }
