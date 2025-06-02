@@ -22,27 +22,87 @@ const AddTokenButton = ({ className }) => {
 
   // Detect the connected wallet type
   useEffect(() => {
-    if (connector) {
-      // Get wallet information from the connector
-      const walletName = connector.name?.toLowerCase() || '';
+    if (typeof window === 'undefined') return; // SSR check
+    
+    const detectWallet = async () => {
+      try {
+        if (connector) {
+          // Get wallet information from the connector
+          const walletName = connector.name?.toLowerCase() || '';
+          console.log("Connector name:", walletName);
 
-      if (walletName.includes('metamask')) {
-        setConnectedWalletType('metamask');
-      } else if (walletName.includes('trust')) {
-        setConnectedWalletType('trust');
-      } else if (walletName.includes('coinbase')) {
-        setConnectedWalletType('coinbase');
-      } else if (walletName.includes('wallet connect')) {
-        // WalletConnect - need to determine the actual wallet app
-        detectWalletConnectProvider();
-      } else {
-        // Default to 'unknown' wallet
-        setConnectedWalletType('unknown');
+          // Get provider information if available
+          const provider = window.ethereum || connectorClient?.provider;
+          const isMM = provider?.isMetaMask;
+          const isTrust = provider?.isTrust;
+          const isCoinbase = provider?.isCoinbaseWallet;
+          
+          console.log("Provider info:", { 
+            isMetaMask: isMM, 
+            isTrust, 
+            isCoinbase,
+            userAgent: navigator.userAgent 
+          });
+
+          // Check if running in a wallet's built-in browser
+          const userAgent = navigator.userAgent.toLowerCase();
+          
+          if (isTrust || userAgent.includes('trust')) {
+            setConnectedWalletType('trust');
+          } else if (isMM || userAgent.includes('metamask')) {
+            setConnectedWalletType('metamask');
+          } else if (isCoinbase || userAgent.includes('coinbase')) {
+            setConnectedWalletType('coinbase');
+          } else if (userAgent.includes('rainbow')) {
+            setConnectedWalletType('rainbow');
+          } else if (walletName.includes('metamask')) {
+            setConnectedWalletType('metamask');
+          } else if (walletName.includes('trust')) {
+            setConnectedWalletType('trust');
+          } else if (walletName.includes('coinbase')) {
+            setConnectedWalletType('coinbase');
+          } else if (walletName.includes('rainbow')) {
+            setConnectedWalletType('rainbow');
+          } else if (walletName.includes('wallet connect')) {
+            // Try to guess the wallet based on platform
+            if (isMobileDevice()) {
+              const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+              if (isIOS) {
+                // Common iOS wallets
+                setConnectedWalletType('trust'); // Fallback to Trust Wallet on iOS as most common
+              } else {
+                // Common Android wallets
+                setConnectedWalletType('metamask'); // Fallback to MetaMask on Android as most common
+              }
+            } else {
+              setConnectedWalletType('walletconnect');
+            }
+          } else {
+            // Default to most common wallet for the platform as fallback
+            if (isMobileDevice()) {
+              const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+              setConnectedWalletType(isIOS ? 'trust' : 'metamask');
+            } else {
+              setConnectedWalletType('metamask'); // Most common desktop wallet
+            }
+          }
+          
+          console.log("Final detected wallet type:", connectedWalletType);
+        }
+      } catch (error) {
+        console.error("Error detecting wallet type:", error);
+        // Use a sensible default based on platform
+        if (isMobileDevice()) {
+          const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          setConnectedWalletType(isIOS ? 'trust' : 'metamask');
+        } else {
+          setConnectedWalletType('metamask');
+        }
       }
-      
-      console.log("Detected wallet type:", walletName);
-    }
-  }, [connector]);
+    };
+    
+    detectWallet();
+  }, [connector, connectorClient]);
 
   // Detect the specific WalletConnect provider (for mobile wallets)
   const detectWalletConnectProvider = () => {
@@ -117,24 +177,60 @@ const AddTokenButton = ({ className }) => {
 
   // Generate deep link based on wallet type and platform
   const getWalletDeepLink = (walletType) => {
+    if (typeof window === 'undefined') return null; // SSR check
+    
     const isAndroid = /android/i.test(navigator.userAgent);
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const encodedTokenAddress = encodeURIComponent(tokenAddress);
     
+    // Check if on mobile - for the Binance Smart Chain
+    // BSC Chain ID is 56 (mainnet) or 97 (testnet)
+    const chainId = 56; // BSC Mainnet
+    
     switch (walletType) {
       case 'trust':
-        return isAndroid 
-          ? `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`
-          : `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}`;
+        if (isAndroid) {
+          return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
+        } else if (isIOS) {
+          // iOS deep links - need to try multiple formats
+          return `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&type=BEP20`;
+        }
+        break;
+      
       case 'metamask':
-        return isAndroid
-          ? `https://metamask.app.link/add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}`
-          : `metamask://add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}`;
+        if (isAndroid) {
+          return `https://metamask.app.link/add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&chainId=${chainId}`;
+        } else if (isIOS) {
+          return `metamask://add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&chainId=${chainId}`;
+        }
+        break;
+      
       case 'coinbase':
         return `https://wallet.coinbase.com/add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&chain=BSC`;
+      
       case 'rainbow':
-        return `rainbow://add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}`;
+        if (isIOS) {
+          return `rainbow://add-token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}`;
+        }
+        break;
+        
+      case 'walletconnect':
+        // Try Trust Wallet as a fallback for WalletConnect
+        if (isAndroid) {
+          return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
+        } else if (isIOS) {
+          return `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&type=BEP20`;
+        }
+        break;
+        
+      case 'unknown':
       default:
+        // Try to guess the best deep link based on platform
+        if (isAndroid) {
+          return `https://link.trustwallet.com/add_token?asset=c20000714_t${tokenAddress}`;
+        } else if (isIOS) {
+          return `trust://add_token?address=${tokenAddress}&symbol=${tokenSymbol}&decimals=${tokenDecimals}&type=BEP20`;
+        }
         return null;
     }
   };
@@ -145,9 +241,24 @@ const AddTokenButton = ({ className }) => {
       setIsLoading(true);
       setLoadingText("Connecting to wallet...");
       
-      // If we have window.ethereum (MetaMask or other injected providers)
+      // Log current environment for debugging
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isMobile = isMobileDevice();
+      console.log("Environment:", { 
+        isIOS, 
+        isAndroid, 
+        isMobile, 
+        connectedWalletType,
+        inAppBrowser: window.ethereum !== undefined,
+        hasConnectorClient: connectorClient !== undefined,
+        hasProvider: provider !== undefined
+      });
+      
+      // APPROACH 1: Try window.ethereum (in-app browser detection)
       if (window.ethereum) {
         try {
+          console.log("Using window.ethereum provider...");
           setLoadingProgress(40);
           setLoadingText("Requesting wallet to add token...");
           
@@ -176,18 +287,17 @@ const AddTokenButton = ({ className }) => {
           }, 500);
           return;
         } catch (error) {
-          // Will try other methods if this fails
           console.log("Error with injected provider, trying alternative methods", error);
         }
       }
       
-      // Use WalletConnect provider if available
+      // APPROACH 2: Try WalletConnect provider
       if (connectorClient?.provider) {
         try {
+          console.log("Using WalletConnect provider...");
           setLoadingProgress(40);
           setLoadingText("Requesting wallet to add token...");
           
-          // Try the WalletConnect compatible way to add a token
           if (connectorClient.provider.request) {
             const wasAdded = await connectorClient.provider.request({
               method: 'wallet_watchAsset',
@@ -219,27 +329,56 @@ const AddTokenButton = ({ className }) => {
         }
       }
       
-      // If on mobile, try deep linking as a fallback
-      if (isMobileDevice() && connectedWalletType) {
-        const deepLink = getWalletDeepLink(connectedWalletType);
+      // APPROACH 3: Try mobile-specific approach with deep linking
+      if (isMobile) {
+        // If we're on a mobile device and previous methods failed, we're likely in a mobile browser
+        // not the wallet's own browser, so we need to use deep linking
+        
+        console.log("Using mobile deep linking fallback...");
+        
+        // First, determine which wallet to use (either detected or best guess)
+        const walletToUse = connectedWalletType || (isIOS ? 'trust' : 'metamask');
+        const deepLink = getWalletDeepLink(walletToUse);
         
         if (deepLink) {
           setLoadingProgress(70);
           setLoadingText("Opening wallet app...");
+          console.log("Opening deep link:", deepLink);
           
-          // Try to open the deep link
-          window.location.href = deepLink;
+          // For iOS, create temporary anchor element to navigate
+          if (isIOS) {
+            const a = document.createElement('a');
+            a.href = deepLink;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            
+            // Small delay before removing the element
+            setTimeout(() => {
+              document.body.removeChild(a);
+              
+              // After removing, try a fallback method for stubborn browsers
+              setTimeout(() => {
+                window.location.href = deepLink;
+              }, 100);
+            }, 300);
+          } else {
+            // For Android, direct navigation works better
+            window.location.href = deepLink;
+          }
           
           // Show a completion message
           setTimeout(() => {
             setIsLoading(false);
-            showNotification("Wallet app should be opening. Please check your wallet app.", "info");
+            showNotification("Wallet app should be opening. Please check your wallet app or add token manually with the copied address.", "info");
+            copyToClipboard(); // Automatically copy as a convenience
           }, 1500);
           return;
         }
       }
       
-      // If all else fails, offer to copy the address
+      // APPROACH 4: If all else fails, copy the address for manual addition
+      console.log("Falling back to manual address copying...");
       setLoadingProgress(100);
       setTimeout(() => {
         setIsLoading(false);

@@ -50,12 +50,24 @@ export function Web3Provider({ children }) {
   useEffect(() => {
     if (!isConnected) {
       setContract(null);
-      // Clear any remaining WalletConnect sessions only when actually disconnected
-      if (typeof window !== 'undefined' && localStorage.getItem('walletconnect')) {
-        localStorage.removeItem('walletconnect');
-      }
+      // Don't manipulate localStorage here - it can cause refresh loops
     }
   }, [isConnected]);
+
+  const safeDisconnect = async () => {
+    try {
+      // Use wagmi's disconnect function
+      await disconnect();
+      
+      // Clear contract state
+      setContract(null);
+      
+      // Let wagmi handle the WalletConnect sessions
+      // Don't manipulate localStorage directly
+    } catch (error) {
+      console.error('Error during disconnect:', error);
+    }
+  };
 
   const getFeeDetails = async (contractInstance) => {
     try {
@@ -172,23 +184,6 @@ export function Web3Provider({ children }) {
     }
   };
 
-  const safeDisconnect = async () => {
-    try {
-      // Use wagmi's disconnect function
-      await disconnect();
-      
-      // Clear contract state
-      setContract(null);
-      
-      // Clear any WalletConnect sessions
-      if (typeof window !== 'undefined' && localStorage.getItem('walletconnect')) {
-        localStorage.removeItem('walletconnect');
-      }
-    } catch (error) {
-      console.error('Error during disconnect:', error);
-    }
-  };
-
   return (
     <Web3Context.Provider
       value={{
@@ -208,7 +203,6 @@ export function Web3Provider({ children }) {
         updateClaimCooldown,
         getAllTasks, 
         getUserReferralInfo,
-        disconnect: safeDisconnect,
       }}
     >
       {children}

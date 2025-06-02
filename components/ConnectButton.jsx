@@ -15,49 +15,9 @@ export const CustomConnectButton = () => {
         const connected = ready && account && chain;
 
         const handleConnect = () => {
-          // Check if we're in a browser environment
-          if (typeof window === 'undefined') {
-            // Server-side rendering, just open modal directly
-            openConnectModal();
-            return;
-          }
-          
-          // Check if iOS device
-          const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-          const isAndroid = /Android/i.test(navigator.userAgent);
-          
-          if (isIOS || isAndroid) {
-            // Check if a wallet is already installed
-            const isMetaMaskInstalled = !!window.ethereum?.isMetaMask;
-            const isTrustWalletInstalled = !!window.ethereum?.isTrust;
-            const isCoinbaseWalletInstalled = !!window.ethereum?.isCoinbaseWallet;
-            
-            if (isIOS) {
-              // iOS specific handling - use a small delay and force modal to render properly
-              setTimeout(() => {
-                // Open the connect modal - DON'T clear localStorage or it causes refresh loops
-                openConnectModal();
-                
-                // For iOS Safari, we need to ensure the modal is properly focused
-                setTimeout(() => {
-                  const modalElement = document.querySelector('[role="dialog"]');
-                  if (modalElement) {
-                    modalElement.setAttribute('tabindex', '-1');
-                    modalElement.focus();
-                  }
-                }, 300);
-              }, 50);
-            } else if (isMetaMaskInstalled || isTrustWalletInstalled || isCoinbaseWalletInstalled) {
-              // Use detected wallets on Android
-              setTimeout(openConnectModal, 100);
-            } else {
-              // Fallback to WalletConnect QR code
-              openConnectModal();
-            }
-          } else {
-            // Desktop or non-mobile browser
-            openConnectModal();
-          }
+          // Simplified connect logic to prevent refresh loops
+          // Just directly open the modal without any additional logic
+          openConnectModal();
         };
 
         return (

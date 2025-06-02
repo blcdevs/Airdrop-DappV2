@@ -17,11 +17,19 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
 
+import { useState, useEffect } from 'react';
+
 function MyApp({ Component, pageProps }) {
   const siteTitle = "Tinseltoken Airdrop DApp";
   const siteDescription = "Claim your Tinseltoken (TNTC) airdrop tokens and earn rewards through referrals";
   const siteUrl = "https://thetinseltoken.com";
   const siteImage = "https://thetinseltoken.com/assets/images/logo.png";
+
+  // Add client-side only rendering to prevent hydration errors
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <>
@@ -79,25 +87,33 @@ function MyApp({ Component, pageProps }) {
               overlayBlur: "small",
             })}
           >
-            <Web3Provider>
-              <NotificationProvider>
-                <div className="min-h-screen bg-[#1A1A1A]">
-                  <Component {...pageProps} />
-                </div>
-                <ToastContainer
-                  position="top-right"
-                  autoClose={5000}
-                  hideProgressBar={false}
-                  newestOnTop
-                  closeOnClick
-                  rtl={false}
-                  pauseOnFocusLoss
-                  draggable
-                  pauseOnHover
-                  theme="dark"
-                />
-              </NotificationProvider>
-            </Web3Provider>
+            {/* Only render when client-side to prevent hydration mismatch */}
+            {mounted ? (
+              <Web3Provider>
+                <NotificationProvider>
+                  <div className="min-h-screen bg-[#1A1A1A]">
+                    <Component {...pageProps} />
+                  </div>
+                  <ToastContainer
+                    position="top-right"
+                    autoClose={5000}
+                    hideProgressBar={false}
+                    newestOnTop
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="dark"
+                  />
+                </NotificationProvider>
+              </Web3Provider>
+            ) : (
+              /* Show a placeholder while client-side rendering is happening */
+              <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
+                <div className="text-white text-xl">Loading...</div>
+              </div>
+            )}
           </RainbowKitProvider>
         </QueryClientProvider>
       </WagmiProvider>
