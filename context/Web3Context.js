@@ -1,7 +1,7 @@
 // context/Web3Context.js
 import { createContext, useContext, useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { useAccount, useChainId, useConnect } from "wagmi";
+import { useAccount, useChainId, useConnect, useDisconnect } from "wagmi";
 import { useEthersProvider, useEthersSigner } from "../provider/hooks";
 import ABI from "../web3/artifacts/contracts/TNTCAirdrop.sol/TNTCAirdrop.json";
 
@@ -20,6 +20,7 @@ export function Web3Provider({ children }) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
 
   // Custom ethers hooks
   const provider = useEthersProvider();
@@ -49,6 +50,10 @@ export function Web3Provider({ children }) {
   useEffect(() => {
     if (!isConnected) {
       setContract(null);
+      // Clear any remaining WalletConnect sessions only when actually disconnected
+      if (typeof window !== 'undefined' && localStorage.getItem('walletconnect')) {
+        localStorage.removeItem('walletconnect');
+      }
     }
   }, [isConnected]);
 
@@ -167,6 +172,23 @@ export function Web3Provider({ children }) {
     }
   };
 
+  const safeDisconnect = async () => {
+    try {
+      // Use wagmi's disconnect function
+      await disconnect();
+      
+      // Clear contract state
+      setContract(null);
+      
+      // Clear any WalletConnect sessions
+      if (typeof window !== 'undefined' && localStorage.getItem('walletconnect')) {
+        localStorage.removeItem('walletconnect');
+      }
+    } catch (error) {
+      console.error('Error during disconnect:', error);
+    }
+  };
+
   return (
     <Web3Context.Provider
       value={{
@@ -186,6 +208,7 @@ export function Web3Provider({ children }) {
         updateClaimCooldown,
         getAllTasks, 
         getUserReferralInfo,
+        disconnect: safeDisconnect,
       }}
     >
       {children}

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import styles from "./CountdownTimer.module.css";
 
 const CountdownTimer = ({ airdropInfo }) => {
+  // Add a state to track if we're on the client side
+  const [isClient, setIsClient] = useState(false);
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -9,8 +11,15 @@ const CountdownTimer = ({ airdropInfo }) => {
     seconds: 0,
   });
 
+  // First useEffect only to set client-side rendering flag
   useEffect(() => {
-    if (!airdropInfo?.endTime) return;
+    setIsClient(true);
+  }, []);
+
+  // Second useEffect for the actual countdown logic
+  useEffect(() => {
+    // Only run this effect on the client side
+    if (!isClient || !airdropInfo?.endTime) return;
 
     const calculateTimeLeft = () => {
       // Convert contract timestamp (seconds) to milliseconds
@@ -40,17 +49,19 @@ const CountdownTimer = ({ airdropInfo }) => {
     const timer = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(timer);
-  }, [airdropInfo]); // Add airdropInfo as dependency
+  }, [airdropInfo, isClient]); // Added isClient as dependency
 
   // Pad numbers with leading zeros
   const padNumber = (num) => String(num).padStart(2, "0");
 
+  // Only render the actual timer values on the client side
+  // This prevents hydration errors by ensuring server and client render the same initial content
   return (
     <div className={styles.timerContainer}>
       <div className={styles.counterBox}>
         <div className={styles.counterInner}>
           <span className={styles.counterValue}>
-            {padNumber(timeLeft.days)}
+            {isClient ? padNumber(timeLeft.days) : "00"}
           </span>
           <span className={styles.counterLabel}>Days</span>
         </div>
@@ -59,7 +70,7 @@ const CountdownTimer = ({ airdropInfo }) => {
       <div className={styles.counterBox}>
         <div className={styles.counterInner}>
           <span className={styles.counterValue}>
-            {padNumber(timeLeft.hours)}
+            {isClient ? padNumber(timeLeft.hours) : "00"}
           </span>
           <span className={styles.counterLabel}>Hours</span>
         </div>
@@ -68,7 +79,7 @@ const CountdownTimer = ({ airdropInfo }) => {
       <div className={styles.counterBox}>
         <div className={styles.counterInner}>
           <span className={styles.counterValue}>
-            {padNumber(timeLeft.minutes)}
+            {isClient ? padNumber(timeLeft.minutes) : "00"}
           </span>
           <span className={styles.counterLabel}>Minutes</span>
         </div>
@@ -77,7 +88,7 @@ const CountdownTimer = ({ airdropInfo }) => {
       <div className={styles.counterBox}>
         <div className={styles.counterInner}>
           <span className={styles.counterValue}>
-            {padNumber(timeLeft.seconds)}
+            {isClient ? padNumber(timeLeft.seconds) : "00"}
           </span>
           <span className={styles.counterLabel}>Seconds</span>
         </div>

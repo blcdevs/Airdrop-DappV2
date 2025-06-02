@@ -115,6 +115,22 @@ const Banner = ({
         id="home_section"
         className="section_banner banner_bg1 banner_shape body-background"
       >
+        {/* Add responsive CSS for mobile */}
+        <style jsx>{`
+          @media (max-width: 767px) {
+            .mobile-airdrop-title {
+              margin-top: 60px !important;
+              font-size: 12px !important;
+              padding: 6px 10px !important;
+              max-width: 80% !important;
+              margin-left: auto !important;
+              margin-right: auto !important;
+            }
+            .banner_inner {
+              padding-top: 15px;
+            }
+          }
+        `}</style>
         <div className="banner_rouded_bg blue_light_bg" />
         <div className="container">
           <div className="row align-items-center">
@@ -161,16 +177,33 @@ const Banner = ({
               </div>
             </div>
             <div className="col-lg-5 offset-lg-1 col-md-12 col-sm-12 order-first">
-              <div className="banner_inner res_md_mb_50 res_xs_mb_30">
+              <div className="banner_inner res_md_mb_50 res_xs_mb_30" style={{ position: 'relative' }}>
                 <h6
-                  className="animation alert alert-warning text-uppercase"
+                  className="animation alert alert-warning text-uppercase mobile-airdrop-title"
                   data-animation="fadeInUp"
                   data-animation-delay="1s"
+                  style={{
+                    padding: '8px 15px',
+                    marginTop: '20px',
+                    fontSize: '14px',
+                    textAlign: 'center',
+                    borderRadius: '20px',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    zIndex: 1
+                  }}
                 >
                   {airdropInfo?.tokenSymbol} AIRDROP ONGOING...
                 </h6>
                 <div
                   className="tk_countdown text-center animation bg-white"
+                  style={{
+                    marginTop: '15px',
+                    padding: '20px 15px',
+                    borderRadius: '10px',
+                    boxShadow: '0 0 15px rgba(0,0,0,0.1)'
+                  }}
                   data-animation="fadeIn"
                   data-animation-delay="1.1s"
                 >
