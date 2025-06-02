@@ -34,74 +34,180 @@ const Dashboard = () => {
 
   useEffect(() => {
     let progressInterval;
+    let timeoutId;
     
     const loadDashboardData = async () => {
-      if (contract && account) {
-        try {
-          setLoading(true);
-          
-          // Start loading progress animation
-          setLoadingProgress(10);
-          progressInterval = setInterval(() => {
-            setLoadingProgress(prev => {
-              if (prev >= 90) {
-                clearInterval(progressInterval);
-                return 90;
-              }
-              return prev + 5;
-            });
-          }, 300);
-          
-          // Get user participation info
-          setLoadingProgress(30);
-          const userInfo = await contract.getUserParticipationInfo(account);
-          
-          // Get user task points
-          setLoadingProgress(50);
-          const userPoints = await contract.userTaskPoints(account);
-          
-          // Get claim count
-          setLoadingProgress(60);
-          const claimCount = await contract.userClaimCount(account);
-          
-          // Get real-time referral data
-          setLoadingProgress(70);
-          const referralInfo = await getUserReferralInfo(account);
-          
-          setUserData({
-            hasParticipated: userInfo.hasParticipated_,
-            referralCount: referralInfo.referralCount, // Use the up-to-date referral count
-            referrer: referralInfo.referrer,
-            totalEarned: ethers.utils.formatEther(userInfo.totalEarned),
-            feePaid: ethers.utils.formatEther(userInfo.feePaid_ || "0"),
-            userPoints: userPoints,
-            claimCount: Number(claimCount)
+      try {
+        setLoading(true);
+        
+        // Start loading progress animation
+        setLoadingProgress(10);
+        progressInterval = setInterval(() => {
+          setLoadingProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 5;
           });
+        }, 300);
+        
+        // Set a global timeout - if data loading takes more than 10 seconds, show the dashboard anyway
+        timeoutId = setTimeout(() => {
+          if (loading) {
+            clearInterval(progressInterval);
+            setLoading(false);
+            console.log("Dashboard load timed out, showing UI anyway");
+            // Set default data if we don't have any
+            if (!userData) {
+              setUserData({
+                hasParticipated: false,
+                referralCount: 0,
+                referrer: ethers.constants.AddressZero,
+                totalEarned: "0",
+                feePaid: "0",
+                userPoints: 0,
+                claimCount: 0
+              });
+            }
+            if (!airdropData) {
+              setAirdropData({
+                airdropAmount: "0",
+                referralBonus: "0",
+                feeAmount: "0.001", // Default fee amount
+                tokenSymbol: "TNTC",
+              });
+            }
+          }
+        }, 10000);
+        
+        // Only proceed with contract calls if contract and account are available
+        if (contract && account) {
+          try {
+            // Get user participation info
+            setLoadingProgress(30);
+            const userInfo = await Promise.race([
+              contract.getUserParticipationInfo(account),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+            ]);
+            
+            // Get user task points
+            setLoadingProgress(50);
+            const userPoints = await Promise.race([
+              contract.userTaskPoints(account),
+              new Promise((resolve) => setTimeout(() => resolve(0), 5000))
+            ]);
+            
+            // Get claim count
+            setLoadingProgress(60);
+            const claimCount = await Promise.race([
+              contract.userClaimCount(account),
+              new Promise((resolve) => setTimeout(() => resolve(0), 5000))
+            ]);
+            
+            // Get real-time referral data
+            setLoadingProgress(70);
+            let referralInfo;
+            try {
+              referralInfo = await Promise.race([
+                getUserReferralInfo(account),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+              ]);
+            } catch (error) {
+              console.log("Error getting referral info, using defaults", error);
+              referralInfo = { referralCount: 0, referrer: ethers.constants.AddressZero };
+            }
+            
+            setUserData({
+              hasParticipated: userInfo.hasParticipated_ || false,
+              referralCount: referralInfo.referralCount || 0,
+              referrer: referralInfo.referrer || ethers.constants.AddressZero,
+              totalEarned: ethers.utils.formatEther(userInfo.totalEarned || "0"),
+              feePaid: ethers.utils.formatEther(userInfo.feePaid_ || "0"),
+              userPoints: userPoints || 0,
+              claimCount: Number(claimCount || 0)
+            });
 
-          // Get airdrop info
-          setLoadingProgress(85);
-          const airdropInfo = await contract.getAirdropInfo();
+            // Get airdrop info
+            setLoadingProgress(85);
+            let airdropInfo;
+            try {
+              airdropInfo = await Promise.race([
+                contract.getAirdropInfo(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+              ]);
+              setAirdropData({
+                airdropAmount: ethers.utils.formatEther(airdropInfo.baseAmount || "0"),
+                referralBonus: ethers.utils.formatEther(airdropInfo.referralAmount || "0"),
+                feeAmount: ethers.utils.formatEther(airdropInfo.currentFeeAmount || "0"),
+                tokenSymbol: "TNTC",
+              });
+            } catch (error) {
+              console.log("Error getting airdrop info, using defaults", error);
+              setAirdropData({
+                airdropAmount: "0",
+                referralBonus: "0",
+                feeAmount: "0.001", // Default fee amount
+                tokenSymbol: "TNTC",
+              });
+            }
+          } catch (error) {
+            console.error("Error in contract calls:", error);
+            // Still show the dashboard with default values
+            if (!userData) {
+              setUserData({
+                hasParticipated: false,
+                referralCount: 0,
+                referrer: ethers.constants.AddressZero,
+                totalEarned: "0",
+                feePaid: "0",
+                userPoints: 0,
+                claimCount: 0
+              });
+            }
+            if (!airdropData) {
+              setAirdropData({
+                airdropAmount: "0",
+                referralBonus: "0",
+                feeAmount: "0.001",
+                tokenSymbol: "TNTC",
+              });
+            }
+          }
+        } else {
+          // If contract or account isn't available, use default values
+          setUserData({
+            hasParticipated: false,
+            referralCount: 0,
+            referrer: ethers.constants.AddressZero,
+            totalEarned: "0",
+            feePaid: "0",
+            userPoints: 0,
+            claimCount: 0
+          });
           setAirdropData({
-            airdropAmount: ethers.utils.formatEther(airdropInfo.baseAmount || "0"),
-            referralBonus: ethers.utils.formatEther(airdropInfo.referralAmount || "0"),
-            feeAmount: ethers.utils.formatEther(airdropInfo.currentFeeAmount || "0"),
+            airdropAmount: "0",
+            referralBonus: "0",
+            feeAmount: "0.001",
             tokenSymbol: "TNTC",
           });
-
-          // Complete loading
-          setLoadingProgress(100);
-          
-          // Add a small delay to ensure smooth transition
-          setTimeout(() => {
-            setLoading(false);
-          }, 500);
-
-        } catch (error) {
-          console.error("Error loading dashboard data:", error);
-          clearInterval(progressInterval);
-          setLoading(false);
-          showNotification("Failed to load dashboard data. Please try again.", "error");
         }
+
+        // Complete loading
+        clearTimeout(timeoutId);
+        setLoadingProgress(100);
+        
+        // Add a small delay to ensure smooth transition
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        clearInterval(progressInterval);
+        clearTimeout(timeoutId);
+        setLoading(false);
+        showNotification("Failed to load some dashboard data, showing available information.", "warning");
       }
     };
 
@@ -130,6 +236,9 @@ const Dashboard = () => {
     return () => {
       clearInterval(refreshInterval);
       if (progressInterval) clearInterval(progressInterval);
+      if (timeoutId) clearTimeout(timeoutId);
+      // Ensure we don't leave loading state if component unmounts
+      setLoading(false);
     };
   }, [contract, account, getUserReferralInfo, showNotification]);
   
