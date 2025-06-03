@@ -27,8 +27,34 @@ function MyApp({ Component, pageProps }) {
 
   // Add client-side only rendering to prevent hydration errors
   const [mounted, setMounted] = useState(false);
+  const [errorLoading, setErrorLoading] = useState(false);
+  
   useEffect(() => {
+    // Clear any lingering localStorage items that might cause issues
+    try {
+      // Only clear specific items that might cause refresh issues
+      const itemsToClear = ['wagmi.connected', 'wagmi.injected.shimDisconnect'];
+      itemsToClear.forEach(item => {
+        if (localStorage.getItem(item)) {
+          localStorage.removeItem(item);
+        }
+      });
+    } catch (e) {
+      console.log('localStorage not available');
+    }
+    
+    // Set mounted state to true
     setMounted(true);
+    
+    // Add error boundary for the whole app
+    window.addEventListener('error', (event) => {
+      console.error('Global error caught:', event.error);
+      setErrorLoading(true);
+    });
+    
+    return () => {
+      window.removeEventListener('error', () => {});
+    };
   }, []);
 
   return (
@@ -69,11 +95,11 @@ function MyApp({ Component, pageProps }) {
         <meta property="og:image:height" content="630" />
         
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-  <link rel="stylesheet" href="assets/css/animate.css" />
-  <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="assets/css/style.css" />
-  <link rel="stylesheet" href="assets/css/responsive.css" />
-  <link rel="stylesheet" href="assets/css/spop.min.css" />
+        <link rel="stylesheet" href="/assets/css/animate.css" />
+        <link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="/assets/css/style.css" />
+        <link rel="stylesheet" href="/assets/css/responsive.css" />
+        <link rel="stylesheet" href="/assets/css/spop.min.css" />
       </Head>
 
       <WagmiProvider config={config}>
@@ -87,8 +113,25 @@ function MyApp({ Component, pageProps }) {
               overlayBlur: "small",
             })}
           >
-            {/* Only render when client-side to prevent hydration mismatch */}
-            {mounted ? (
+            {/* Error state - show error UI instead of normal app */}
+            {errorLoading ? (
+              <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center p-4">
+                <div className="text-white text-xl mb-4">Something went wrong</div>
+                <button 
+                  className="bg-[#E0AD6B] hover:bg-[#d9a05e] text-white font-bold py-2 px-4 rounded"
+                  onClick={() => window.location.href = '/'}
+                >
+                  Return to Home
+                </button>
+                <button 
+                  className="mt-2 bg-transparent border border-[#E0AD6B] hover:bg-[#E0AD6B] text-white font-bold py-2 px-4 rounded"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload Page
+                </button>
+              </div>
+            ) : mounted ? (
+              /* Normal app UI - only rendered client-side after mounting */
               <Web3Provider>
                 <NotificationProvider>
                   <div className="min-h-screen bg-[#1A1A1A]">
@@ -109,9 +152,12 @@ function MyApp({ Component, pageProps }) {
                 </NotificationProvider>
               </Web3Provider>
             ) : (
-              /* Show a placeholder while client-side rendering is happening */
+              /* Loading placeholder - shown before client-side rendering */
               <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-                <div className="text-white text-xl">Loading...</div>
+                <div className="text-center">
+                  <div className="text-white text-xl mb-4">Loading Airdrop DApp...</div>
+                  <div className="w-16 h-16 border-4 border-t-[#E0AD6B] border-b-[#E0AD6B] border-l-transparent border-r-transparent rounded-full animate-spin mx-auto"></div>
+                </div>
               </div>
             )}
           </RainbowKitProvider>
