@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useWeb3 } from "../context/Web3Context";
+import { useNetwork } from "../context/NetworkContext";
 import { ethers } from "ethers";
 import { useAccount } from "wagmi";
 import { useNotification } from "../context/NotificationContext";
 import { trackReferral, analyzeReferralUrl, handleTransactionError } from "../utils/errorHandling";
+import { ErrorState } from "../components/LoadingStates/LoadingStates";
 
 import MainHeader from "../components/MainHeader";
 import Banner from "../components/Banner";
@@ -21,39 +23,106 @@ import Footer from "../components/Footer";
 import MoveUp from "../components/MoveUp";
 import AdminDashboard from "../components/AdminDashboard/AdminDashboard";
 import UserDashboard from "../components/UserDashboard/UserDashboard";
+import NetworkModal from "../components/NetworkModal/NetworkModal";
 
 const index = () => {
   const { isConnected } = useAccount();
-  const { 
-    account, 
-    contract, 
+  const {
+    account,
+    contract,
     connectWallet,
     feeAmount,
     feeCollector,
     updateFeeAmount,
     updateFeeCollector,
     withdrawFees,
-    updateClaimCooldown
+    updateClaimCooldown,
+    isInitializing,
+    initError,
+    retryCount
   } = useWeb3();
+  const {
+    networkStatus,
+    networkContractCall
+  } = useNetwork();
   const { showNotification } = useNotification();
-  
+
   const [activeUser, setActiveUser] = useState();
   const [airdropInfo, setAirdropInfo] = useState();
   const [amount, setAmount] = useState("");
-  const [recipient, setRecipient] = useState("");
   const [loading, setLoading] = useState(false);
   const [referralAddress, setReferralAddress] = useState("");
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [airdropAmount, setAirdropAmount] = useState();
   const [airdropBonus, setAirdropBonus] = useState();
-  const [newStartTime, setNewStartTime] = useState("");
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState(null);
+  const [fetchRetryCount, setFetchRetryCount] = useState(0);
+
+  // Track if initial load is complete
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
-    if (contract && account) {
-      fetchAirdropDetails();
-      fetchUserDetails();
+    let isMounted = true;
+
+    const fetchData = async () => {
+      if (!contract || !account || isInitializing) {
+        return;
+      }
+
+      setDataLoading(true);
+      setDataError(null);
+
+      try {
+        // Ultra-fast parallel fetch
+        const [airdropResult, userResult] = await Promise.allSettled([
+          fetchAirdropDetails(),
+          fetchUserDetails()
+        ]);
+
+        if (!isMounted) return;
+
+        // Check if at least one fetch succeeded
+        if (airdropResult.status === 'rejected' && userResult.status === 'rejected') {
+          throw new Error('All data fetching failed');
+        }
+
+        // Log any failures but don't block the UI
+        if (airdropResult.status === 'rejected') {
+          console.warn('Airdrop details fetch failed:', airdropResult.reason);
+        }
+        if (userResult.status === 'rejected') {
+          console.warn('User details fetch failed:', userResult.reason);
+        }
+
+        setFetchRetryCount(0);
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setDataError(error);
+
+        // Fast retry logic
+        if (fetchRetryCount < 2 && isMounted) {
+          const retryDelay = Math.min(500 * Math.pow(2, fetchRetryCount), 2000);
+          setTimeout(() => {
+            setFetchRetryCount(prev => prev + 1);
+          }, retryDelay);
+        }
+      } finally {
+        if (isMounted) {
+          setDataLoading(false);
+        }
+      }
+    };
+
+    if (contract && account && !isInitializing) {
+      fetchData();
     }
-  }, [contract, account]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [contract, account, isInitializing, fetchRetryCount]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -69,28 +138,27 @@ const index = () => {
   }, []);
 
   const fetchAirdropDetails = async () => {
+    if (!contract) {
+      throw new Error("Contract not available");
+    }
+
     try {
-      const [tokenInfo, airdropInfo, participants, allParticipants] =
-        await Promise.all([
-          contract.getTokenInfo(),
-          contract.getAirdropInfo(),
-          contract.getTotalParticipants(),
-          contract.getAllParticipants(),
-        ]);
+      // Fast parallel fetch with shorter timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 5000)
+      );
 
-      const formattedParticipants = allParticipants.map((p) => ({
-        address: p.userAddress,
-        hasParticipated: p.hasParticipated,
-        referralCount: p.referralCount.toString(),
-        referrer: p.referrer,
-        totalEarned: ethers.utils.formatEther(p.totalEarned),
-        participationTime: new Date(
-          Number(p.participationTime) * 1000
-        ).toLocaleString(),
-        feePaid: ethers.utils.formatEther(p.feePaid || 0),
-      }));
+      const dataPromise = Promise.all([
+        contract.getTokenInfo(),
+        contract.getAirdropInfo(),
+        contract.getTotalParticipants(),
+      ]);
 
-      setAirdropInfo({
+      const [tokenInfo, airdropInfo, participants] =
+        await Promise.race([dataPromise, timeoutPromise]);
+
+      // Set data immediately
+      const formattedAirdropInfo = {
         startTime: airdropInfo.start ? Number(airdropInfo.start) * 1000 : 0,
         endTime: airdropInfo.end ? Number(airdropInfo.end) * 1000 : 0,
         totalParticipants: Number(participants),
@@ -111,29 +179,67 @@ const index = () => {
         tokenDecimals: tokenInfo.decimals,
         tokenAddress: tokenInfo.tokenAddress,
         totalSupply: ethers.utils.formatEther(tokenInfo.totalSupply),
-        allParticipants: formattedParticipants,
+        allParticipants: [], // Load separately if needed
+      };
+
+      setAirdropInfo(formattedAirdropInfo);
+
+      // Load participants in background (optional)
+      contract.getAllParticipants().then(allParticipants => {
+        const formattedParticipants = allParticipants.map((p) => ({
+          address: p.userAddress,
+          hasParticipated: p.hasParticipated,
+          referralCount: p.referralCount.toString(),
+          referrer: p.referrer,
+          totalEarned: ethers.utils.formatEther(p.totalEarned),
+          participationTime: new Date(
+            Number(p.participationTime) * 1000
+          ).toLocaleString(),
+          feePaid: ethers.utils.formatEther(p.feePaid || 0),
+        }));
+
+        setAirdropInfo(prev => ({
+          ...prev,
+          allParticipants: formattedParticipants,
+        }));
+      }).catch(err => {
+        console.warn("Failed to load participants data:", err);
       });
+
     } catch (error) {
       console.error("Error fetching airdrop details:", error);
+      throw error;
     }
   };
 
   const fetchUserDetails = async () => {
+    if (!contract || !account) {
+      throw new Error("Contract or account not available");
+    }
+
     try {
-      const [participationInfo, referralInfo] = await Promise.all([
+      // Fast parallel fetch
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('User details timeout')), 3000)
+      );
+
+      const dataPromise = Promise.all([
         contract.getUserParticipationInfo(account),
         contract.getReferralCount(account)
       ]);
 
+      const [participationInfo, referralInfo] = await Promise.race([dataPromise, timeoutPromise]);
+
       setActiveUser({
         hasParticipated: participationInfo.hasParticipated_,
-        referralCount: referralInfo.toNumber(), // Get referral count directly
+        referralCount: referralInfo.toNumber(),
         referrer: participationInfo.referrer_,
         totalEarned: ethers.utils.formatEther(participationInfo.totalEarned),
         feePaid: ethers.utils.formatEther(participationInfo.feePaid_ || 0),
       });
     } catch (error) {
       console.error("Error checking user status:", error);
+      throw error;
     }
   };
 
@@ -337,8 +443,30 @@ const index = () => {
   };
   
 
+  // Only show full-page loading for critical initialization errors
+  // For normal loading, we'll show the page with component-level loading states
+  if (initError && retryCount >= 3) {
+    return (
+      <ErrorState
+        title="Connection Failed"
+        message="Unable to connect to the blockchain network. This could be due to:"
+        showDetails={true}
+        details={[
+          "Wallet connection issues",
+          "Network connectivity problems",
+          "Smart contract unavailable",
+          "RPC endpoint issues"
+        ]}
+        onReload={() => window.location.reload()}
+        onRetry={() => setFetchRetryCount(0)}
+      />
+    );
+  }
+
   return (
     <div className="bg_light v_light_blue_pro" data-spy="scroll">
+
+
       <MainHeader />
       <Banner
         airdropInfo={airdropInfo}
@@ -347,17 +475,24 @@ const index = () => {
         handleParticipate={handleParticipate}
         setReferralAddress={setReferralAddress}
         referralAddress={referralAddress}
-        loading={loading}
+        loading={loading || dataLoading}
         account={account}
         setIsAdminModalOpen={setIsAdminModalOpen}
+        dataLoading={dataLoading}
+        dataError={dataError}
+        onRetry={() => setFetchRetryCount(prev => prev + 1)}
       />
 
-      {/* <UserDashboard 
+      {/* <UserDashboard
         activeUser={activeUser}
         airdropInfo={airdropInfo}
       /> */}
 
       <Footer />
+
+      {/* Network Modal */}
+      <NetworkModal />
+
       <AdminDashboard
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}
@@ -373,7 +508,9 @@ const index = () => {
         onUpdateFeeAmount={handleUpdateFeeAmount}
         onUpdateFeeCollector={handleUpdateFeeCollector}
         onWithdrawFees={handleWithdrawFees}
-        onUpdateCooldown={handleUpdateCooldown} 
+        onUpdateCooldown={handleUpdateCooldown}
+        account={account}
+        showNotification={showNotification}
       />
     </div>
   );

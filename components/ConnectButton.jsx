@@ -36,9 +36,22 @@ export const CustomConnectButton = () => {
                 return (
                   <button
                     onClick={handleConnect}
-                    className="bg-[#E0AD6B] hover:bg-[#eba447] text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                    style={{
+                      background: '#E0AD6B',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseOver={(e) => e.target.style.background = '#d8953d'}
+                    onMouseOut={(e) => e.target.style.background = '#E0AD6B'}
                   >
-                    Connect Wallet
+                    Connect
                   </button>
                 );
               }
@@ -47,38 +60,73 @@ export const CustomConnectButton = () => {
                 return (
                   <button
                     onClick={openChainModal}
-                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg"
+                    style={{
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
                   >
-                    Wrong network
+                    Wrong Network
                   </button>
                 );
               }
 
               return (
-                <div className="flex items-center gap-4">
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  flexWrap: 'nowrap'
+                }}>
                   <button
                     onClick={openChainModal}
-                    className="bg-[#E0AD6B] hover:bg-[#d8953d] text-[#1A1A1A] px-4 py-2 rounded-lg flex items-center gap-2 mr-2"
+                    style={{
+                      background: '#E0AD6B',
+                      color: '#1A1A1A',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
                   >
-                    {chain.hasIcon && (
-                      <div className="w-5 h-5 ">
-                        {chain.iconUrl && (
-                          <img
-                            alt={chain.name ?? "Chain icon"}
-                            src={chain.iconUrl}
-                            className="w-5 h-5"
-                          />
-                        )}
-                      </div>
+                    {chain.hasIcon && chain.iconUrl && (
+                      <img
+                        alt={chain.name ?? "Chain icon"}
+                        src={chain.iconUrl}
+                        style={{ width: '16px', height: '16px' }}
+                      />
                     )}
                   </button>
 
                   <button
                     onClick={openAccountModal}
-                    className="bg-[#E0AD6B] hover:bg-[#d8953d] text-[#1A1A1A] px-4 py-2 rounded-lg flex items-center gap-2"
+                    style={{
+                      background: '#E0AD6B',
+                      color: '#1A1A1A',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '120px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
                   >
                     {account.displayName}
-                    {account.displayBalance && ` (${account.displayBalance})`}
                   </button>
                 </div>
               );

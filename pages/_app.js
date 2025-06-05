@@ -3,13 +3,16 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { Web3Provider } from "../context/Web3Context";
 import { NotificationProvider } from "../context/NotificationContext";
+import { NetworkProvider } from "../context/NetworkContext";
 import "../styles/globals.css";
-import Head from 'next/head'; 
+import Head from 'next/head';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';  
+import 'react-toastify/dist/ReactToastify.css';
 
 import { config } from "../provider/wagmiConfigs";
 import Header from "../components/Header";
+import ErrorBoundary from "../components/ErrorBoundary";
+import OfflineNotification from "../components/OfflineNotification/OfflineNotification";
 
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
@@ -33,7 +36,14 @@ function MyApp({ Component, pageProps }) {
     // Clear any lingering localStorage items that might cause issues
     try {
       // Only clear specific items that might cause refresh issues
-      const itemsToClear = ['wagmi.connected', 'wagmi.injected.shimDisconnect'];
+      const itemsToClear = [
+        'wagmi.connected',
+        'wagmi.injected.shimDisconnect',
+        'walletconnect',
+        'wc@2:client:0.3//session',
+        'wc@2:core:0.3//keychain',
+        'wc@2:core:0.3//messages'
+      ];
       itemsToClear.forEach(item => {
         if (localStorage.getItem(item)) {
           localStorage.removeItem(item);
@@ -42,18 +52,38 @@ function MyApp({ Component, pageProps }) {
     } catch (e) {
       console.log('localStorage not available');
     }
-    
+
+    // Mobile-specific optimizations
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      // Prevent zoom on input focus
+      const viewport = document.querySelector('meta[name=viewport]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+      }
+
+      // Add mobile-specific error handling
+      window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled promise rejection on mobile:', event.reason);
+        event.preventDefault();
+      });
+    }
+
     // Set mounted state to true
     setMounted(true);
-    
+
     // Add error boundary for the whole app
     window.addEventListener('error', (event) => {
       console.error('Global error caught:', event.error);
-      setErrorLoading(true);
+      // Don't immediately set error state on mobile - give it a chance to recover
+      if (!isMobile) {
+        setErrorLoading(true);
+      }
     });
-    
+
     return () => {
       window.removeEventListener('error', () => {});
+      window.removeEventListener('unhandledrejection', () => {});
     };
   }, []);
 
@@ -132,25 +162,30 @@ function MyApp({ Component, pageProps }) {
               </div>
             ) : mounted ? (
               /* Normal app UI - only rendered client-side after mounting */
-              <Web3Provider>
-                <NotificationProvider>
-                  <div className="min-h-screen bg-[#1A1A1A]">
-                    <Component {...pageProps} />
-                  </div>
-                  <ToastContainer
-                    position="top-right"
-                    autoClose={5000}
-                    hideProgressBar={false}
-                    newestOnTop
-                    closeOnClick
-                    rtl={false}
-                    pauseOnFocusLoss
-                    draggable
-                    pauseOnHover
-                    theme="dark"
-                  />
-                </NotificationProvider>
-              </Web3Provider>
+              <ErrorBoundary>
+                <NetworkProvider>
+                  <Web3Provider>
+                    <NotificationProvider>
+                      <div className="min-h-screen bg-[#1A1A1A]">
+                        <Component {...pageProps} />
+                      </div>
+                      <OfflineNotification />
+                      <ToastContainer
+                        position="top-right"
+                        autoClose={5000}
+                        hideProgressBar={false}
+                        newestOnTop
+                        closeOnClick
+                        rtl={false}
+                        pauseOnFocusLoss
+                        draggable
+                        pauseOnHover
+                        theme="dark"
+                      />
+                    </NotificationProvider>
+                  </Web3Provider>
+                </NetworkProvider>
+              </ErrorBoundary>
             ) : (
               /* Loading placeholder - shown before client-side rendering */
               <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">

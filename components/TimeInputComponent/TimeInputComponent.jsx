@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 // Time Input Component
-const TimeRangeSettings = () => {
+const TimeRangeSettings = ({
+  contract,
+  airdropInfo,
+  showNotification,
+  onTimeUpdate,
+  styles
+}) => {
   const [timeRange, setTimeRange] = useState({
     startTime: "",
     endTime: "",
@@ -55,61 +61,107 @@ const TimeRangeSettings = () => {
         throw new Error("Start time cannot be in the past");
       }
 
-      const tx = await contract.setTimeRange(startTimestamp, endTimestamp);
+      // Use updateAirdropTiming function from the contract
+      const tx = await contract.updateAirdropTiming(startTimestamp, endTimestamp);
       await tx.wait();
 
-      showNotification("Time range updated successfully!", "success");
+      if (showNotification) {
+        showNotification("Airdrop timing updated successfully!", "success");
+      }
+
+      // Call onTimeUpdate callback if provided
+      if (onTimeUpdate) {
+        onTimeUpdate();
+      }
     } catch (error) {
       console.error("Error updating time range:", error);
-      showNotification(error.message, "error");
+      if (showNotification) {
+        showNotification(error.message || "Failed to update timing", "error");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Initialize with default time range
+  // Initialize with airdropInfo or default time range
   useEffect(() => {
-    setDefaultTimeRange();
-  }, []);
+    if (airdropInfo?.startTime && airdropInfo?.endTime) {
+      setTimeRange({
+        startTime: unixToDatetimeLocal(airdropInfo.startTime / 1000),
+        endTime: unixToDatetimeLocal(airdropInfo.endTime / 1000),
+      });
+    } else {
+      setDefaultTimeRange();
+    }
+  }, [airdropInfo]);
 
   return (
-    <div className={styles.settingGroup}>
-      <h3>Update Time Range</h3>
-      <div className={styles.timeInputs}>
-        <div className={styles.inputGroup}>
-          <label>Start Time</label>
+    <div className={styles?.settingGroup} style={{ marginBottom: '20px', padding: '15px', border: '1px solid #333', borderRadius: '8px' }}>
+      <h3 style={{ color: '#fff', marginBottom: '15px' }}>Update Airdrop Timing</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div className={styles?.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label style={{ color: '#ccc', fontSize: '14px' }}>Start Time</label>
           <input
             type="datetime-local"
             value={timeRange.startTime}
             onChange={(e) => handleTimeChange("startTime", e.target.value)}
             min={unixToDatetimeLocal(Math.floor(Date.now() / 1000))}
             disabled={loading}
+            style={{
+              padding: '8px',
+              borderRadius: '4px',
+              border: '1px solid #555',
+              backgroundColor: '#2a2a2a',
+              color: '#fff'
+            }}
           />
         </div>
-        <div className={styles.inputGroup}>
-          <label>End Time</label>
+        <div className={styles?.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label style={{ color: '#ccc', fontSize: '14px' }}>End Time</label>
           <input
             type="datetime-local"
             value={timeRange.endTime}
             onChange={(e) => handleTimeChange("endTime", e.target.value)}
             min={timeRange.startTime}
             disabled={loading}
+            style={{
+              padding: '8px',
+              borderRadius: '4px',
+              border: '1px solid #555',
+              backgroundColor: '#2a2a2a',
+              color: '#fff'
+            }}
           />
         </div>
-        <div className={styles.buttonGroup}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             onClick={setDefaultTimeRange}
-            className={styles.secondaryButton}
             disabled={loading}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '4px',
+              border: '1px solid #555',
+              backgroundColor: '#444',
+              color: '#fff',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
+            }}
           >
             Set Default (1 Month)
           </button>
           <button
             onClick={updateAirDropTime}
-            className={styles.primaryButton}
             disabled={loading || !timeRange.startTime || !timeRange.endTime}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '4px',
+              border: 'none',
+              backgroundColor: loading || !timeRange.startTime || !timeRange.endTime ? '#666' : '#007bff',
+              color: '#fff',
+              cursor: loading || !timeRange.startTime || !timeRange.endTime ? 'not-allowed' : 'pointer'
+            }}
           >
-            {loading ? "Updating..." : "Update Time Range"}
+            {loading ? "Updating..." : "Update Airdrop Timing"}
           </button>
         </div>
       </div>

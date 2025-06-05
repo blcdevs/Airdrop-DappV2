@@ -15,6 +15,9 @@ export function Web3Provider({ children }) {
   const [contract, setContract] = useState(null);
   const [feeAmount, setFeeAmount] = useState(INITIAL_FEE_AMOUNT);
   const [feeCollector, setFeeCollector] = useState(INITIAL_FEE_COLLECTOR);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [initError, setInitError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Wagmi hooks v2
   const { address, isConnected } = useAccount();
@@ -29,28 +32,83 @@ export function Web3Provider({ children }) {
   const contractAddress = CONTRACT_ADDRESS;
   const contractABI = ABI.abi;
 
-  // Initialize contract
+  // Initialize contract with retry logic
   useEffect(() => {
-    if (signer && provider) {
+    let isMounted = true;
+
+    const initializeContract = async () => {
+      if (!signer || !provider || !contractAddress) {
+        return;
+      }
+
+      setIsInitializing(true);
+      setInitError(null);
+
       try {
-        const contract = new ethers.Contract(
+        // Add delay to ensure signer is fully ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (!isMounted) return;
+
+        const contractInstance = new ethers.Contract(
           contractAddress,
           contractABI,
           signer
         );
-        setContract(contract);
-        getFeeDetails(contract);
+
+        // Test contract connection
+        await contractInstance.deployed();
+
+        if (!isMounted) return;
+
+        setContract(contractInstance);
+        setRetryCount(0);
+
+        // Get fee details with error handling
+        try {
+          await getFeeDetails(contractInstance);
+        } catch (feeError) {
+          console.warn("Could not fetch fee details:", feeError);
+          // Don't fail contract initialization for fee details
+        }
+
       } catch (error) {
         console.error("Error initializing contract:", error);
+        setInitError(error);
         setContract(null);
+
+        // Retry logic for mobile/network issues
+        if (retryCount < 3 && isMounted) {
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, 2000 * (retryCount + 1)); // Exponential backoff
+        }
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false);
+        }
       }
+    };
+
+    if (signer && provider && isConnected) {
+      initializeContract();
+    } else {
+      setContract(null);
+      setIsInitializing(false);
+      setInitError(null);
     }
-  }, [signer, provider]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [signer, provider, isConnected, retryCount]);
 
   useEffect(() => {
     if (!isConnected) {
       setContract(null);
-      // Don't manipulate localStorage here - it can cause refresh loops
+      setIsInitializing(false);
+      setInitError(null);
+      setRetryCount(0);
     }
   }, [isConnected]);
 
@@ -71,11 +129,23 @@ export function Web3Provider({ children }) {
 
   const getFeeDetails = async (contractInstance) => {
     try {
-      const airdropInfo = await contractInstance.getAirdropInfo();
-      setFeeAmount(ethers.utils.formatEther(airdropInfo.currentFeeAmount || 0));
-      setFeeCollector(airdropInfo.currentFeeCollector);
+      // Reduced timeout for faster feedback
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 8000)
+      );
+
+      const airdropInfoPromise = contractInstance.getAirdropInfo();
+      const airdropInfo = await Promise.race([airdropInfoPromise, timeoutPromise]);
+
+      if (airdropInfo) {
+        setFeeAmount(ethers.utils.formatEther(airdropInfo.currentFeeAmount || 0));
+        setFeeCollector(airdropInfo.currentFeeCollector || INITIAL_FEE_COLLECTOR);
+      }
     } catch (error) {
       console.error("Error fetching fee details:", error);
+      // Use fallback values
+      setFeeAmount(INITIAL_FEE_AMOUNT);
+      setFeeCollector(INITIAL_FEE_COLLECTOR);
     }
   };
 
@@ -132,14 +202,36 @@ export function Web3Provider({ children }) {
   };
 
 
+  // Simple retry wrapper for contract calls
+  const retryContractCall = async (contractMethod, ...args) => {
+    const maxRetries = 2; // Reduced retries to prevent loops
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await contractMethod(...args);
+        return result;
+      } catch (error) {
+        console.error(`Contract call attempt ${attempt} failed:`, error);
+
+        if (attempt === maxRetries) {
+          throw error;
+        }
+
+        // Simple delay without exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  };
+
   const getAllTasks = async () => {
     try {
       if (!contract) throw new Error("Contract not initialized");
-      const taskCount = await contract.taskCount();
+
+      const taskCount = await retryContractCall(() => contract.taskCount());
       const tasks = [];
-      
+
       for (let i = 0; i < taskCount; i++) {
-        const task = await contract.tasks(i);
+        const task = await retryContractCall(() => contract.tasks(i));
         tasks.push({
           id: i,
           title: task.title,
@@ -154,6 +246,17 @@ export function Web3Provider({ children }) {
     } catch (error) {
       console.error("Error fetching tasks:", error);
       return [];
+    }
+  };
+
+  const getPoints = async (userAddress) => {
+    try {
+      if (!contract) throw new Error("Contract not initialized");
+      const points = await retryContractCall(() => contract.userTaskPoints(userAddress || address));
+      return points;
+    } catch (error) {
+      console.error("Error fetching user points:", error);
+      return ethers.BigNumber.from(0);
     }
   };
 
@@ -201,8 +304,12 @@ export function Web3Provider({ children }) {
         withdrawFees,
         getFeeDetails,
         updateClaimCooldown,
-        getAllTasks, 
+        getAllTasks,
+        getPoints,
         getUserReferralInfo,
+        isInitializing,
+        initError,
+        retryCount,
       }}
     >
       {children}

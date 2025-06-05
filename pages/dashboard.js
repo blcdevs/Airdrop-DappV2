@@ -19,11 +19,11 @@ const Dashboard = () => {
   } = useWeb3();
   
   const [activeMenu, setActiveMenu] = useState('dashboard');
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [userData, setUserData] = useState(null);
   const [airdropData, setAirdropData] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(10); // Start with 10% progress
+  const [dataError, setDataError] = useState(null);
   const { showNotification } = useNotification();
 
   useEffect(() => {
@@ -33,91 +33,36 @@ const Dashboard = () => {
   }, [isConnected, router]);
 
   useEffect(() => {
-    let progressInterval;
-    let timeoutId;
-    
     const loadDashboardData = async () => {
       try {
-        setLoading(true);
-        
-        // Start loading progress animation
-        setLoadingProgress(10);
-        progressInterval = setInterval(() => {
-          setLoadingProgress(prev => {
-            if (prev >= 90) {
-              clearInterval(progressInterval);
-              return 90;
-            }
-            return prev + 5;
-          });
-        }, 300);
-        
-        // Set a global timeout - if data loading takes more than 10 seconds, show the dashboard anyway
-        timeoutId = setTimeout(() => {
-          if (loading) {
-            clearInterval(progressInterval);
-            setLoading(false);
-            console.log("Dashboard load timed out, showing UI anyway");
-            // Set default data if we don't have any
-            if (!userData) {
-              setUserData({
-                hasParticipated: false,
-                referralCount: 0,
-                referrer: ethers.constants.AddressZero,
-                totalEarned: "0",
-                feePaid: "0",
-                userPoints: 0,
-                claimCount: 0
-              });
-            }
-            if (!airdropData) {
-              setAirdropData({
-                airdropAmount: "0",
-                referralBonus: "0",
-                feeAmount: "0.001", // Default fee amount
-                tokenSymbol: "TNTC",
-              });
-            }
-          }
-        }, 10000);
-        
+        setDataLoading(true);
+        setDataError(null);
+
         // Only proceed with contract calls if contract and account are available
         if (contract && account) {
           try {
-            // Get user participation info
-            setLoadingProgress(30);
-            const userInfo = await Promise.race([
-              contract.getUserParticipationInfo(account),
-              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+            // Fast parallel fetch with shorter timeouts
+            const [userInfo, userPoints, claimCount] = await Promise.race([
+              Promise.all([
+                contract.getUserParticipationInfo(account),
+                contract.userTaskPoints(account).catch(() => 0),
+                contract.userClaimCount(account).catch(() => 0)
+              ]),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
             ]);
-            
-            // Get user task points
-            setLoadingProgress(50);
-            const userPoints = await Promise.race([
-              contract.userTaskPoints(account),
-              new Promise((resolve) => setTimeout(() => resolve(0), 5000))
-            ]);
-            
-            // Get claim count
-            setLoadingProgress(60);
-            const claimCount = await Promise.race([
-              contract.userClaimCount(account),
-              new Promise((resolve) => setTimeout(() => resolve(0), 5000))
-            ]);
-            
-            // Get real-time referral data
-            setLoadingProgress(70);
+
+            // Get referral info separately with fallback
             let referralInfo;
             try {
               referralInfo = await Promise.race([
                 getUserReferralInfo(account),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
               ]);
             } catch (error) {
               console.log("Error getting referral info, using defaults", error);
               referralInfo = { referralCount: 0, referrer: ethers.constants.AddressZero };
             }
-            
+
             setUserData({
               hasParticipated: userInfo.hasParticipated_ || false,
               referralCount: referralInfo.referralCount || 0,
@@ -128,13 +73,11 @@ const Dashboard = () => {
               claimCount: Number(claimCount || 0)
             });
 
-            // Get airdrop info
-            setLoadingProgress(85);
-            let airdropInfo;
+            // Get airdrop info with fast timeout
             try {
-              airdropInfo = await Promise.race([
+              const airdropInfo = await Promise.race([
                 contract.getAirdropInfo(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
               ]);
               setAirdropData({
                 airdropAmount: ethers.utils.formatEther(airdropInfo.baseAmount || "0"),
@@ -147,12 +90,13 @@ const Dashboard = () => {
               setAirdropData({
                 airdropAmount: "0",
                 referralBonus: "0",
-                feeAmount: "0.001", // Default fee amount
+                feeAmount: "0.001",
                 tokenSymbol: "TNTC",
               });
             }
           } catch (error) {
             console.error("Error in contract calls:", error);
+            setDataError(error);
             // Still show the dashboard with default values
             if (!userData) {
               setUserData({
@@ -193,21 +137,12 @@ const Dashboard = () => {
           });
         }
 
-        // Complete loading
-        clearTimeout(timeoutId);
-        setLoadingProgress(100);
-        
-        // Add a small delay to ensure smooth transition
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
-
       } catch (error) {
         console.error("Error loading dashboard data:", error);
-        clearInterval(progressInterval);
-        clearTimeout(timeoutId);
-        setLoading(false);
+        setDataError(error);
         showNotification("Failed to load some dashboard data, showing available information.", "warning");
+      } finally {
+        setDataLoading(false);
       }
     };
 
@@ -232,13 +167,9 @@ const Dashboard = () => {
         }
       }
     }, 30000); // Refresh every 30 seconds
-    
+
     return () => {
       clearInterval(refreshInterval);
-      if (progressInterval) clearInterval(progressInterval);
-      if (timeoutId) clearTimeout(timeoutId);
-      // Ensure we don't leave loading state if component unmounts
-      setLoading(false);
     };
   }, [contract, account, getUserReferralInfo, showNotification]);
   
@@ -299,31 +230,7 @@ const Dashboard = () => {
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
-  
-  if (loading) {
-    return (
-      <div className={styles.loadingDashboard}>
-        <div className={styles.loadingContent}>
-          <div className={styles.loadingIcon}>
-            <i className="fas fa-chart-line"></i>
-          </div>
-          <h2>Loading Dashboard</h2>
-          <div className={styles.progressContainer}>
-            <div 
-              className={styles.progressBar} 
-              style={{ width: `${loadingProgress}%` }}
-            ></div>
-          </div>
-          <p className={styles.loadingMessage}>
-            {loadingProgress < 30 ? "Connecting to blockchain..." : 
-             loadingProgress < 60 ? "Fetching user data..." : 
-             loadingProgress < 90 ? "Preparing dashboard..." : 
-             "Almost ready..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className={styles.dashboardLayout}>
@@ -380,16 +287,21 @@ const Dashboard = () => {
 
       <div className={styles.mainContent}>
         {activeMenu === 'dashboard' && (
-          <UserDashboard 
+          <UserDashboard
             activeUser={userData}
             airdropInfo={airdropData}
             handleParticipateWithoutReferral={handleParticipateWithoutReferral}
+            dataLoading={dataLoading}
+            dataError={dataError}
+            onRetry={() => window.location.reload()}
           />
         )}
         {activeMenu === 'tasks' && (
-          <TaskDashboard 
+          <TaskDashboard
             userPoints={userData?.userPoints || 0}
             onPointsUpdate={handlePointsUpdate}
+            dataLoading={dataLoading}
+            dataError={dataError}
           />
         )}
       </div>

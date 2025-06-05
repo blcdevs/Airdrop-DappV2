@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Link from 'next/link'; 
+import Link from 'next/link';
 import { useWeb3 } from "../context/Web3Context";
 import { CustomConnectButton } from "./ConnectButton";
 import CountdownTimer from "./CountdownTimer/CountdownTimer";
 import AirdropBanner from "./AirdropBanner/AirdropBanner";
 import UserDetailsModal from "./UserDetailsModal/UserDetailsModal";
-import AddTokenButton from "./AddTokenButton"; 
+import AddTokenButton from "./AddTokenButton";
+import { ButtonSkeleton } from "./SkeletonLoader/SkeletonLoader";
 
 const ADMIN = process.env.NEXT_PUBLIC_ADMIN_ADDRESS;
 
@@ -18,6 +19,10 @@ const Banner = ({
   setReferralAddress,
   account,
   setIsAdminModalOpen,
+  dataLoading,
+  dataError,
+  onRetry,
+  loading,
 }) => {
   const router = useRouter();
   const [isReferral, setIsReferral] = useState(false);
@@ -208,11 +213,37 @@ const Banner = ({
                   data-animation-delay="1.1s"
                 >
                   <div className="banner_text tk_counter_inner">
-                    <CountdownTimer airdropInfo={airdropInfo} />
+                    {/* Show error state with retry */}
+                    {dataError && account && (
+                      <div className="text-center mb-3 p-3 bg-red-100 border border-red-300 rounded">
+                        <div className="text-red-600 mb-2">Failed to load data</div>
+                        <button
+                          onClick={onRetry}
+                          className="btn btn-sm btn-outline-danger"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
 
-                    <AirdropBanner airdropInfo={airdropInfo} />
+                    <CountdownTimer
+                      airdropInfo={airdropInfo}
+                      isLoading={dataLoading}
+                      hasError={!!dataError}
+                    />
+
+                    <AirdropBanner
+                      airdropInfo={airdropInfo}
+                      isLoading={dataLoading}
+                      hasError={!!dataError}
+                    />
                     {!account ? (
                       <CustomConnectButton />
+                    ) : dataLoading ? (
+                      <div className="d-flex flex-column gap-2">
+                        <ButtonSkeleton width="160px" height="45px" />
+                        <ButtonSkeleton width="140px" height="40px" />
+                      </div>
                     ) : (
                       <>
                         <button
@@ -220,40 +251,50 @@ const Banner = ({
                           data-animation="fadeInUp"
                           data-animation-delay="1.40s"
                           onClick={handleClaimClick}
-                          disabled={!canClaim && activeUser?.hasParticipated}
+                          disabled={loading || (!canClaim && activeUser?.hasParticipated)}
                         >
-                          {!activeUser?.hasParticipated 
-                            ? "Claim Airdrop" 
-                            : canClaim 
-                              ? "Claim Again" 
-                              : `Next Claim: ${formatTimeLeft(nextClaimTime)}`
+                          {loading
+                            ? "Processing..."
+                            : !activeUser?.hasParticipated
+                              ? "Claim Airdrop"
+                              : canClaim
+                                ? "Claim Again"
+                                : `Next Claim: ${formatTimeLeft(nextClaimTime)}`
                           }
                         </button>
 
-                        {account && (
-                          <Link 
-                            href="/dashboard" 
-                            className="btn btn-default btn-radius animation"
-                            data-animation="fadeInUp"
-                            data-animation-delay="1.45s"
-                          >
-                            Go To Dashboard
-                          </Link>
-                        )}
+                        <Link
+                          href="/dashboard"
+                          className="btn btn-default btn-radius animation"
+                          data-animation="fadeInUp"
+                          data-animation-delay="1.45s"
+                        >
+                          Go To Dashboard
+                        </Link>
                       </>
                     )}
 
-                    {account && <AddTokenButton />}
+                    {account && (
+                      dataLoading ? (
+                        <ButtonSkeleton width="120px" height="40px" />
+                      ) : (
+                        <AddTokenButton />
+                      )
+                    )}
 
                     {ADMIN?.toLowerCase() === account?.toLowerCase() && (
-                      <button 
-                        onClick={() => setIsAdminModalOpen(true)}
-                        className="btn btn-default btn-radius animation"
-                        data-animation="fadeInUp"
-                        data-animation-delay="1.50s"
-                      >
-                        Admin Dashboard
-                      </button>
+                      dataLoading ? (
+                        <ButtonSkeleton width="140px" height="40px" />
+                      ) : (
+                        <button
+                          onClick={() => setIsAdminModalOpen(true)}
+                          className="btn btn-default btn-radius animation"
+                          data-animation="fadeInUp"
+                          data-animation-delay="1.50s"
+                        >
+                          Admin Dashboard
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

@@ -3,6 +3,12 @@ import { useWeb3 } from "../../context/Web3Context";
 import styles from "./TaskDashboard.module.css";
 import { ethers } from "ethers";
 import { useNotification } from "../../context/NotificationContext";
+import {
+  Skeleton,
+  HeaderSkeleton,
+  CardSkeleton,
+  ButtonSkeleton
+} from "../SkeletonLoader/SkeletonLoader";
 
 // Configuration constants
 const TASK_COMPLETION_DELAY = 2 * 60; // 2 minutes in seconds
@@ -242,96 +248,173 @@ const TaskDashboard = ({ userPoints, onPointsUpdate }) => {
     return tasksByType[tabType] || [];
   };
 
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loader}></div>
-        <p className={styles.loadingText}>Loading tasks...</p>
+  // Task Header Skeleton Component
+  const TaskHeaderSkeleton = () => (
+    <header className={styles.dashboardHeader}>
+      <div className={styles.headerContent}>
+        <h1 className={styles.title}>Task Center</h1>
+        <div className={styles.statsContainer}>
+          <div className={styles.stat}>
+            <Skeleton width="40px" height="24px" />
+            <span className={styles.statLabel}>Total Points</span>
+          </div>
+          <div className={styles.stat}>
+            <Skeleton width="20px" height="24px" />
+            <span className={styles.statLabel}>Tasks Completed</span>
+          </div>
+          <div className={styles.stat}>
+            <Skeleton width="30px" height="24px" />
+            <span className={styles.statLabel}>Your Points</span>
+          </div>
+          <div className={styles.statValue}>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: "0%" }} />
+            </div>
+            <Skeleton width="80px" height="16px" />
+          </div>
+        </div>
       </div>
-    );
-  }
+    </header>
+  );
+
+  // Task Card Skeleton Component
+  const TaskCardSkeleton = () => (
+    <div className={styles.taskCard}>
+      <div className={styles.taskIconBadge}>
+        <Skeleton width="24px" height="24px" borderRadius="50%" />
+      </div>
+      <div className={styles.taskContent}>
+        <div className={styles.taskHeader}>
+          <Skeleton width="200px" height="20px" />
+          <Skeleton width="80px" height="16px" />
+        </div>
+        <Skeleton width="100%" height="16px" style={{ margin: "8px 0" }} />
+        <div className={styles.taskFooter}>
+          <Skeleton width="120px" height="16px" />
+          <ButtonSkeleton width="100px" height="36px" />
+        </div>
+      </div>
+    </div>
+  );
+
+  // Tab Skeleton Component
+  const TabsSkeleton = () => (
+    <div className={styles.tabsContainer}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className={styles.tabButton}>
+          <Skeleton width="20px" height="20px" borderRadius="50%" />
+          <Skeleton width="80px" height="16px" />
+        </div>
+      ))}
+    </div>
+  );
 
   const displayTasks = getTasksForActiveTab();
   const completedCount = getCompletedTaskCount();
   const totalTasks = tasks.length;
-  
-  // Use localUserPoints for display
-  const displayPoints = localUserPoints || userPoints;
+
+  // Calculate total available points from all tasks
+  const totalAvailablePoints = tasks && tasks.length > 0 ? tasks.reduce((total, task) => {
+    return total + parseFloat(ethers.utils.formatUnits(task.rewardAmount, 18));
+  }, 0) : 0;
+
+  // Use localUserPoints for user's earned points
+  const userEarnedPoints = localUserPoints || userPoints;
 
   return (
     <div className={styles.taskDashboard}>
-      <header className={styles.dashboardHeader}>
-        <div className={styles.headerContent}>
-          <h1 className={styles.title}>Task Center</h1>
-          <div className={styles.statsContainer}>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{ethers.utils.formatUnits(displayPoints.toString(), 18) || "0"}</span>
-              <span className={styles.statLabel}>Total Points</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{completedCount}</span>
-              <span className={styles.statLabel}>Tasks Completed</span>
-            </div>
-            <div className={styles.statValue}>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0}%` }}
-                />
+      {/* Header with progressive loading */}
+      {loading ? (
+        <TaskHeaderSkeleton />
+      ) : (
+        <header className={styles.dashboardHeader}>
+          <div className={styles.headerContent}>
+            <h1 className={styles.title}>Task Center</h1>
+            <div className={styles.statsContainer}>
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{totalAvailablePoints % 1 === 0 ? totalAvailablePoints.toFixed(0) : totalAvailablePoints.toFixed(1)}</span>
+                <span className={styles.statLabel}>Total Points</span>
               </div>
-              <span className={styles.progressText}>
-                {completedCount}/{totalTasks} Tasks
-              </span>
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{completedCount}</span>
+                <span className={styles.statLabel}>Tasks Completed</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{ethers.utils.formatUnits(userEarnedPoints.toString(), 18) || "0"}</span>
+                <span className={styles.statLabel}>Your Points</span>
+              </div>
+              <div className={styles.statValue}>
+                <div className={styles.progressBar}>
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className={styles.progressText}>
+                  {completedCount}/{totalTasks} Tasks
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <div className={styles.tabsContainer}>
-        <button 
-          className={`${styles.tabButton} ${activeTab === "all" ? styles.activeTab : ""}`}
-          onClick={() => setActiveTab("all")}
-        >
-          <i className="fas fa-th-list"></i>
-          <span>All Tasks</span>
-          <div className={styles.tabIndicator}></div>
-        </button>
-        
-        {visibleTaskTypes.map(type => (
-          <button 
-            key={type}
-            className={`${styles.tabButton} ${activeTab === String(type) ? styles.activeTab : ""}`}
-            onClick={() => setActiveTab(String(type))}
-            style={{ 
-              '--tab-color': TASK_ICONS[type]?.color || '#6366f1'
-            }}
+      {/* Tabs with progressive loading */}
+      {loading ? (
+        <TabsSkeleton />
+      ) : (
+        <div className={styles.tabsContainer}>
+          <button
+            className={`${styles.tabButton} ${activeTab === "all" ? styles.activeTab : ""}`}
+            onClick={() => setActiveTab("all")}
           >
-            <i className={TASK_ICONS[type]?.icon || "fas fa-tasks"}></i>
-            <span>{TASK_ICONS[type]?.name || `Type ${type}`}</span>
+            <i className="fas fa-th-list"></i>
+            <span>All Tasks</span>
             <div className={styles.tabIndicator}></div>
           </button>
-        ))}
-      </div>
 
+          {visibleTaskTypes.map(type => (
+            <button
+              key={type}
+              className={`${styles.tabButton} ${activeTab === String(type) ? styles.activeTab : ""}`}
+              onClick={() => setActiveTab(String(type))}
+              style={{
+                '--tab-color': TASK_ICONS[type]?.color || '#6366f1'
+              }}
+            >
+              <i className={TASK_ICONS[type]?.icon || "fas fa-tasks"}></i>
+              <span>{TASK_ICONS[type]?.name || `Type ${type}`}</span>
+              <div className={styles.tabIndicator}></div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Task List with progressive loading */}
       <div className={styles.taskListWrapper}>
         <div className={styles.taskList}>
-          {displayTasks && displayTasks.length > 0 ? (
+          {loading ? (
+            // Show skeleton cards while loading
+            Array.from({ length: 6 }).map((_, index) => (
+              <TaskCardSkeleton key={index} />
+            ))
+          ) : displayTasks && displayTasks.length > 0 ? (
             displayTasks.map((task) => {
               const taskType = Number(task.taskType);
               const taskIcon = TASK_ICONS[taskType] || { icon: "fas fa-tasks", color: "#6366f1" };
               const status = getTaskStatus(task.id);
               const isCompleted = userTaskStatuses[task.id]?.isCompleted;
-              
+
               return (
-                <div 
-                  key={task.id} 
+                <div
+                  key={task.id}
                   className={`${styles.taskCard} ${isCompleted ? styles.completed : ''}`}
                   style={{ '--task-color': taskIcon.color }}
                 >
                   <div className={styles.taskIconBadge}>
                     <i className={taskIcon.icon}></i>
                   </div>
-                  
+
                   <div className={styles.taskContent}>
                     <div className={styles.taskHeader}>
                       <h3 className={styles.taskTitle}>{task.title}</h3>
@@ -339,9 +422,9 @@ const TaskDashboard = ({ userPoints, onPointsUpdate }) => {
                         +{ethers.utils.formatUnits(task.rewardAmount, 18)} Points
                       </span>
                     </div>
-                    
+
                     <p className={styles.taskDescription}>{task.description}</p>
-                    
+
                     <div className={styles.taskFooter}>
                       <div className={styles.taskStatus}>
                         {isCompleted ? (
@@ -358,8 +441,8 @@ const TaskDashboard = ({ userPoints, onPointsUpdate }) => {
                           </span>
                         )}
                       </div>
-                      
-                      <button 
+
+                      <button
                         onClick={() => handleTaskClick(task)}
                         className={`${styles.taskAction} ${isCompleted ? styles.completed : ''} ${status === "WAIT" ? styles.waiting : ''} ${status === "CLAIM" ? styles.claim : ''}`}
                         disabled={isCompleted}

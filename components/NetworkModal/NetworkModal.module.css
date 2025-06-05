@@ -1,0 +1,278 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.modalContent {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid #333;
+  color: white;
+}
+
+.modalHeader {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.connectionIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.modalTitle {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #fff;
+}
+
+.modalSubtitle {
+  font-size: 16px;
+  color: #ccc;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.networkInfo {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoLabel {
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.infoValue {
+  font-size: 16px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.optimizationInfo {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #E0AD6B;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.optimizationList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.optimizationItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(224, 173, 107, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #E0AD6B;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.optimizationItem i {
+  color: #E0AD6B;
+  width: 16px;
+  text-align: center;
+}
+
+.tipsSection {
+  margin-bottom: 24px;
+}
+
+.tipsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tipItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #ddd;
+  line-height: 1.4;
+}
+
+.tipItem i {
+  color: #10b981;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.retryButton,
+.continueButton {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.retryButton {
+  background: #E0AD6B;
+  color: white;
+}
+
+.retryButton:hover:not(:disabled) {
+  background: #d9a05e;
+  transform: translateY(-1px);
+}
+
+.retryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.retryButton.loading {
+  pointer-events: none;
+}
+
+.continueButton {
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #555;
+}
+
+.continueButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #777;
+}
+
+.modalFooter {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footerText {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .modalOverlay {
+    padding: 16px;
+  }
+
+  .modalContent {
+    padding: 20px;
+    max-height: 95vh;
+  }
+
+  .modalTitle {
+    font-size: 20px;
+  }
+
+  .modalSubtitle {
+    font-size: 14px;
+  }
+
+  .infoGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+
+  .retryButton,
+  .continueButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modalOverlay {
+    padding: 12px;
+  }
+
+  .modalContent {
+    padding: 16px;
+  }
+
+  .connectionIcon {
+    font-size: 36px;
+  }
+
+  .modalTitle {
+    font-size: 18px;
+  }
+
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+}

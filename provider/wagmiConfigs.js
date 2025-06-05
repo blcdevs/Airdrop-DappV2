@@ -160,7 +160,48 @@ const connectors = connectorsForWallets(
   }
 );
 
-// Completely remove all event listeners to prevent refresh loops
+// Create safe storage that prevents refresh loops
+const createSafeStorage = () => {
+  if (typeof window === 'undefined') return undefined;
+
+  return createStorage({
+    storage: {
+      getItem: (key) => {
+        try {
+          // Skip problematic keys that cause refresh loops
+          if (key.includes('walletconnect') || key.includes('removeReason')) {
+            return null;
+          }
+          return localStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      },
+      setItem: (key, value) => {
+        try {
+          // Skip problematic keys that cause refresh loops
+          if (key.includes('walletconnect') || key.includes('removeReason')) {
+            return;
+          }
+          localStorage.setItem(key, value);
+        } catch {
+          // Silently fail
+        }
+      },
+      removeItem: (key) => {
+        try {
+          // Skip problematic keys that cause refresh loops
+          if (key.includes('walletconnect') || key.includes('removeReason')) {
+            return;
+          }
+          localStorage.removeItem(key);
+        } catch {
+          // Silently fail
+        }
+      },
+    },
+  });
+};
 
 export const config = createConfig({
   connectors,
@@ -168,6 +209,6 @@ export const config = createConfig({
   transports: {
     [bsc.id]: http(),
   },
-  // Completely disable localStorage to prevent refresh loops
-  storage: undefined,
+  storage: createSafeStorage(),
+  ssr: true, // Enable SSR support
 });

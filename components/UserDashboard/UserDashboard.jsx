@@ -2,38 +2,37 @@ import React, { useState, useEffect } from "react";
 import { ethers } from 'ethers';
 import styles from "./UserDashboard.module.css";
 import { useWeb3 } from "../../context/Web3Context";
+import {
+  Skeleton,
+  HeaderSkeleton,
+  StatsSkeleton,
+  CardSkeleton,
+  ButtonSkeleton
+} from "../SkeletonLoader/SkeletonLoader";
 
-const UserDashboard = ({ activeUser, airdropInfo, handleParticipateWithoutReferral }) => {
+const UserDashboard = ({
+  activeUser,
+  airdropInfo,
+  handleParticipateWithoutReferral,
+  dataLoading = false,
+  dataError = null,
+  onRetry
+}) => {
   const { account, contract } = useWeb3();
   const [referralLink, setReferralLink] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
   const [nextClaimTime, setNextClaimTime] = useState(0);
   const [canClaim, setCanClaim] = useState(false);
 
   useEffect(() => {
-    // Simulate loading progress
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-      progress += 5;
-      setLoadingProgress(progress);
-      if (progress >= 100) {
-        clearInterval(progressInterval);
-      }
-    }, 100);
-
     if (account && typeof window !== 'undefined') {
       // Generate referral link using query parameters
       const baseUrl = window.location.origin;
       const referralLinkWithQuery = `${baseUrl}?ref=${account}`;
-      
+
       setReferralLink(referralLinkWithQuery);
       console.log("Generated referral link:", referralLinkWithQuery);
-      setLoading(false);
     }
-
-    return () => clearInterval(progressInterval);
   }, [account]);
 
   useEffect(() => {
@@ -81,154 +80,166 @@ const UserDashboard = ({ activeUser, airdropInfo, handleParticipateWithoutReferr
     return new Date(timestamp * 1000).toLocaleDateString();
   };
 
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingContent}>
-          <div className={styles.loadingIcon}>
-            <i className="fas fa-chart-line"></i>
-          </div>
-          <h2>Loading Your Dashboard</h2>
-          <div className={styles.progressContainer}>
-            <div 
-              className={styles.progressBar} 
-              style={{ width: `${loadingProgress}%` }}
-            ></div>
-          </div>
-          <p className={styles.loadingMessage}>
-            {loadingProgress < 33 ? "Connecting to blockchain..." : 
-             loadingProgress < 66 ? "Fetching your data..." : 
-             loadingProgress < 100 ? "Almost there..." : 
-             "Preparing dashboard..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className={styles.dashboardContainer}>
-      {/* Header Section */}
-      <div className={styles.dashboardHeader}>
-        <div className={styles.headerContent}>
-          <div className={styles.headerMain}>
-            <h1>User Dashboard</h1>
-            <p className={styles.walletAddress}>
-              <i className="fas fa-wallet"></i> <span>{shortenAddress(account)}</span>
-            </p>
+      {/* Show error banner if there's an error */}
+      {dataError && (
+        <div className={styles.errorBanner}>
+          <div className={styles.errorContent}>
+            <i className="fas fa-exclamation-triangle"></i>
+            <span>Failed to load some data due to poor network. </span>
+            <button onClick={onRetry} className={styles.retryButton}>
+              Retry
+            </button>
           </div>
-          <div className={styles.headerStats}>
-            <div className={styles.headerStat}>
-              <span className={styles.statLabel}>Total Earned</span>
-              <span className={styles.statValue}>{activeUser?.totalEarned || "0"} {airdropInfo?.tokenSymbol}</span>
+        </div>
+      )}
+
+      {/* Header Section */}
+      {dataLoading ? (
+        <HeaderSkeleton />
+      ) : (
+        <div className={styles.dashboardHeader}>
+          <div className={styles.headerContent}>
+            <div className={styles.headerMain}>
+              <h1>User Dashboard</h1>
+              <p className={styles.walletAddress}>
+                <i className="fas fa-wallet"></i> <span>{shortenAddress(account)}</span>
+              </p>
             </div>
-            <div className={styles.headerStat}>
-              <span className={styles.statLabel}>Task Points</span>
-              <span className={styles.statValue}>{ethers.utils.formatUnits(activeUser?.userPoints || "0", 18)}</span>
-            </div>
-            <div className={styles.headerStat}>
-              <span className={styles.statLabel}>Referrals</span>
-              <span className={styles.statValue}>{activeUser?.referralCount || "0"}</span>
+            <div className={styles.headerStats}>
+              <div className={styles.headerStat}>
+                <span className={styles.statLabel}>Total Earned</span>
+                <span className={styles.statValue}>
+                  {`${activeUser?.totalEarned || "0"} ${airdropInfo?.tokenSymbol || "TNTC"}`}
+                </span>
+              </div>
+              <div className={styles.headerStat}>
+                <span className={styles.statLabel}>Task Points</span>
+                <span className={styles.statValue}>
+                  {ethers.utils.formatUnits(activeUser?.userPoints || "0", 18)}
+                </span>
+              </div>
+              <div className={styles.headerStat}>
+                <span className={styles.statLabel}>Referrals</span>
+                <span className={styles.statValue}>
+                  {activeUser?.referralCount || "0"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Dashboard Content */}
       <div className={styles.dashboardContent}>
         {/* Claim Card */}
-        <div className={styles.claimCard}>
-          <div className={styles.claimContent}>
-            <div className={styles.claimInfo}>
-              <h2>Airdrop Claim</h2>
-              <p className={styles.claimDescription}>
-                Claim your airdrop rewards and earn {airdropInfo?.airdropAmount} {airdropInfo?.tokenSymbol}
-              </p>
-              <div className={styles.nextClaimInfo}>
-                {canClaim ? 
-                  <span className={styles.readyToClaim}>Ready to claim now!</span> : 
-                  <span className={styles.nextClaim}>Next claim available in: <span>{formatTimeLeft(nextClaimTime)}</span></span>
-                }
+        {dataLoading ? (
+          <CardSkeleton />
+        ) : (
+          <div className={styles.claimCard}>
+            <div className={styles.claimContent}>
+              <div className={styles.claimInfo}>
+                <h2>Airdrop Claim</h2>
+                <p className={styles.claimDescription}>
+                  {`Claim your airdrop rewards and earn ${airdropInfo?.airdropAmount || "0"} ${airdropInfo?.tokenSymbol || "TNTC"}`}
+                </p>
+                <div className={styles.nextClaimInfo}>
+                  {canClaim ? (
+                    <span className={styles.readyToClaim}>Ready to claim now!</span>
+                  ) : (
+                    <span className={styles.nextClaim}>Next claim available in: <span>{formatTimeLeft(nextClaimTime)}</span></span>
+                  )}
+                </div>
+              </div>
+              <div className={styles.claimAction}>
+                <button
+                  onClick={handleParticipateWithoutReferral}
+                  className={`${styles.claimButton} ${!canClaim ? styles.disabled : ''}`}
+                  disabled={!canClaim}
+                >
+                  <i className="fas fa-gift"></i>
+                  {canClaim ? "Claim Airdrop" : "Wait for next claim"}
+                </button>
               </div>
             </div>
-            <div className={styles.claimAction}>
-              <button
-                onClick={handleParticipateWithoutReferral}
-                className={`${styles.claimButton} ${!canClaim ? styles.disabled : ''}`}
-                disabled={!canClaim}
-              >
-                <i className="fas fa-gift"></i> {canClaim ? "Claim Airdrop" : "Wait for next claim"}
-              </button>
+            <div className={styles.claimProgress}>
+              <div className={styles.progressBarContainer}>
+                <div className={styles.progressBackground}></div>
+                <div
+                  className={styles.progressFill}
+                  style={{ width: canClaim ? '100%' : `${((Date.now() / 1000 - (nextClaimTime - 24 * 3600)) / (24 * 3600)) * 100}%` }}
+                ></div>
+              </div>
             </div>
           </div>
-          <div className={styles.claimProgress}>
-            <div className={styles.progressBarContainer}>
-              <div className={styles.progressBackground}></div>
-              <div 
-                className={styles.progressFill} 
-                style={{ width: canClaim ? '100%' : `${((Date.now() / 1000 - (nextClaimTime - 24 * 3600)) / (24 * 3600)) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Stats Overview Section */}
         <div className={styles.statsSection}>
           <h2 className={styles.sectionTitle}>
             <i className="fas fa-chart-pie"></i> Overview
           </h2>
-          <div className={styles.statsGrid}>
-            {/* Total Earned Card */}
-            <div className={styles.statCard}>
-              <div className={styles.cardIcon}>
-                <i className="fas fa-coins"></i>
+          {dataLoading ? (
+            <StatsSkeleton />
+          ) : (
+            <div className={styles.statsGrid}>
+              {/* Total Earned Card */}
+              <div className={styles.statCard}>
+                <div className={styles.cardIcon}>
+                  <i className="fas fa-coins"></i>
+                </div>
+                <div className={styles.cardContent}>
+                  <h3>Total Earned</h3>
+                  <p className={styles.tokenAmount}>
+                    {`${activeUser?.totalEarned || "0"} ${airdropInfo?.tokenSymbol || "TNTC"}`}
+                  </p>
+                </div>
               </div>
-              <div className={styles.cardContent}>
-                <h3>Total Earned</h3>
-                <p className={styles.tokenAmount}>
-                  {activeUser?.totalEarned || "0"} {airdropInfo?.tokenSymbol}
-                </p>
-              </div>
-            </div>
 
-            <div className={styles.statCard}>
-              <div className={styles.cardIcon}>
-                <i className="fas fa-hand-holding-usd"></i>
+              <div className={styles.statCard}>
+                <div className={styles.cardIcon}>
+                  <i className="fas fa-hand-holding-usd"></i>
+                </div>
+                <div className={styles.cardContent}>
+                  <h3>From Claims</h3>
+                  <p className={styles.tokenAmount}>
+                    {`${Number(activeUser?.claimCount || 0) * Number(airdropInfo?.airdropAmount || 0)} ${airdropInfo?.tokenSymbol || "TNTC"}`}
+                  </p>
+                </div>
               </div>
-              <div className={styles.cardContent}>
-                <h3>From Claims</h3>
-                <p className={styles.tokenAmount}>
-                  {Number(activeUser?.claimCount || 0) * Number(airdropInfo?.airdropAmount || 0)} {airdropInfo?.tokenSymbol}
-                </p>
-              </div>
-            </div>
 
-            {/* Referral Count Card */}
-            <div className={styles.statCard}>
-              <div className={styles.cardIcon}>
-                <i className="fas fa-users"></i>
+              {/* Referral Count Card */}
+              <div className={styles.statCard}>
+                <div className={styles.cardIcon}>
+                  <i className="fas fa-users"></i>
+                </div>
+                <div className={styles.cardContent}>
+                  <h3>Referral Earnings</h3>
+                  <p className={styles.referralCount}>
+                    {`${Number(activeUser?.referralCount || 0) * Number(airdropInfo?.referralBonus || 0)} ${airdropInfo?.tokenSymbol || "TNTC"}`}
+                  </p>
+                  <span className={styles.subLabel}>
+                    {`${activeUser?.referralCount || "0"} referrals`}
+                  </span>
+                </div>
               </div>
-              <div className={styles.cardContent}>
-                <h3>Referral Earnings</h3>
-                <p className={styles.referralCount}>
-                  {Number(activeUser?.referralCount || 0) * Number(airdropInfo?.referralBonus || 0)} {airdropInfo?.tokenSymbol}
-                </p>
-                <span className={styles.subLabel}>{activeUser?.referralCount || "0"} referrals</span>
-              </div>
-            </div>
 
-            <div className={styles.statCard}>
-              <div className={styles.cardIcon}>
-                <i className="fas fa-tasks"></i>
-              </div>
-              <div className={styles.cardContent}>
-                <h3>Task Points</h3>
-                <p className={styles.tokenAmount}>
-                  {ethers.utils.formatUnits(activeUser?.userPoints || "0", 18)}
-                </p>
+              <div className={styles.statCard}>
+                <div className={styles.cardIcon}>
+                  <i className="fas fa-tasks"></i>
+                </div>
+                <div className={styles.cardContent}>
+                  <h3>Task Points</h3>
+                  <p className={styles.tokenAmount}>
+                    {ethers.utils.formatUnits(activeUser?.userPoints || "0", 18)}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Detailed Information Section */}

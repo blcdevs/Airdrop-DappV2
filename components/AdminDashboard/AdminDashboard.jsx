@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react"; // Add useEffect
+import { useState, useEffect } from "react"; // Add useEffect
 import styles from "./AdminDashboard.module.css";
 import { useWeb3 } from "../../context/Web3Context"; // Add this import
-import { ethers } from "ethers"; 
+import { ethers } from "ethers";
+import TimeRangeSettings from "../TimeInputComponent/TimeInputComponent";
 
 const AdminDashboard = ({
   isOpen,
@@ -18,12 +19,14 @@ const AdminDashboard = ({
   onUpdateFeeAmount,
   onUpdateFeeCollector,
   onWithdrawFees,
-  onUpdateCooldown
+  onUpdateCooldown,
+  account,
+  showNotification
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [newFeeAmount, setNewFeeAmount] = useState("");
   const [newFeeCollector, setNewFeeCollector] = useState("");
-  const [newCooldown, setNewCooldown] = useState(""); 
+  const [newCooldown, setNewCooldown] = useState("");
   const [tasks, setTasks] = useState([]);
   const { getAllTasks } = useWeb3();
 
@@ -105,6 +108,14 @@ const AdminDashboard = ({
         await contract.setTaskStatus(taskId, false);
       } catch (error) {
         console.error("Error deleting task:", error);
+      }
+    };
+
+    // Callback for when time is updated
+    const handleTimeUpdate = () => {
+      // Refresh the page or refetch data after time update
+      if (typeof window !== 'undefined' && window.location.reload) {
+        setTimeout(() => window.location.reload(), 1000);
       }
     };
 
@@ -211,105 +222,7 @@ const AdminDashboard = ({
                     {feeAmount} BNB
                   </p>
                 </div>
-                <div className={styles.statCard}>  {activeTab === "tasks" && (
-    <div className={styles.tasksManagement}>
-      <div className={styles.createTask}>
-        <h3>Create New Task</h3>
-        <div className={styles.taskForm}>
-          <input
-            type="text"
-            placeholder="Task Title"
-            value={newTask.title}
-            onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-          />
-          <textarea
-            placeholder="Task Description"
-            value={newTask.description}
-            onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-          />
-          <input
-            type="text"
-            placeholder="Task Link"
-            value={newTask.link}
-            onChange={(e) => setNewTask({...newTask, link: e.target.value})}
-          />
-          <input
-            type="number"
-            placeholder="Reward Points"
-            value={newTask.rewardAmount}
-            onChange={(e) => setNewTask({...newTask, rewardAmount: e.target.value})}
-          />
-          <select
-            value={newTask.taskType}
-            onChange={(e) => setNewTask({...newTask, taskType: e.target.value})}
-          >
-            {taskTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-          <button onClick={handleCreateTask}>Create Task</button>
-        </div>
-      </div>
-  
-      <div className={styles.tasksList}>
-        <h3>Existing Tasks</h3>
-        {tasks.map((task) => (
-          <div key={task.id} className={styles.taskItem}>
-            {editingTask?.id === task.id ? (
-              <div className={styles.editTaskForm}>
-                <input
-                  type="text"
-                  value={editingTask.title}
-                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-                />
-                <textarea
-                  value={editingTask.description}
-                  onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
-                />
-                <input
-                  type="text"
-                  value={editingTask.link}
-                  onChange={(e) => setEditingTask({...editingTask, link: e.target.value})}
-                />
-                <input
-                  type="number"
-                  value={editingTask.rewardAmount}
-                  onChange={(e) => setEditingTask({...editingTask, rewardAmount: e.target.value})}
-                />
-                <select
-                  value={editingTask.taskType}
-                  onChange={(e) => setEditingTask({...editingTask, taskType: e.target.value})}
-                >
-                  {taskTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                <div className={styles.editActions}>
-                  <button onClick={() => handleUpdateTask(task.id)}>Save</button>
-                  <button onClick={() => setEditingTask(null)}>Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className={styles.taskInfo}>
-                  <h4>{task.title}</h4>
-                  <p>{task.description}</p>
-                  <span className={styles.taskReward}>{task.rewardAmount} Points</span>
-                </div>
-                <div className={styles.taskActions}>
-                  <button onClick={() => setEditingTask(task)}>Edit</button>
-                  <button onClick={() => handleDeleteTask(task.id)}>Delete</button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-        {tasks.length === 0 && (
-          <p className={styles.noTasks}>No tasks created yet</p>
-        )}
-      </div>
-    </div>
-  )}
+                <div className={styles.statCard}>
                   <h3>Fee Collector</h3>
                   <p className={styles.statValue} style={{ fontSize: '0.8em', wordBreak: 'break-all' }}>
                     {feeCollector}
@@ -319,6 +232,77 @@ const AdminDashboard = ({
                   <h3>Total Fees Collected</h3>
                   <p className={styles.statValue}>
                     {airdropInfo?.totalFeesCollected || 0} BNB
+                  </p>
+                </div>
+
+                {/* Contract Information Cards */}
+                <div className={styles.statCard}>
+                  <h3>Airdrop Contract Address</h3>
+                  <p className={styles.statValue} style={{ fontSize: '0.7em', wordBreak: 'break-all' }}>
+                    {contract?.address || process.env.NEXT_PUBLIC_AIRDROP_CONTRACT_ADDRESS || 'Not Available'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Token Contract Address</h3>
+                  <p className={styles.statValue} style={{ fontSize: '0.7em', wordBreak: 'break-all' }}>
+                    {airdropInfo?.tokenAddress || 'Not Available'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Admin Account</h3>
+                  <p className={styles.statValue} style={{ fontSize: '0.7em', wordBreak: 'break-all' }}>
+                    {account || 'Not Connected'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Token Information</h3>
+                  <p className={styles.statValue}>
+                    {airdropInfo?.tokenName || 'N/A'} ({airdropInfo?.tokenSymbol || 'N/A'})
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Total Token Supply</h3>
+                  <p className={styles.statValue}>
+                    {airdropInfo?.totalSupply ? parseFloat(airdropInfo.totalSupply).toLocaleString() : '0'} {airdropInfo?.tokenSymbol || 'Tokens'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Claim Cooldown</h3>
+                  <p className={styles.statValue}>
+                    {airdropInfo?.currentCooldown ? `${Math.floor(airdropInfo.currentCooldown / 3600)} Hours` : '6 Hours'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Airdrop Start Time</h3>
+                  <p className={styles.statValue} style={{ fontSize: '0.8em' }}>
+                    {airdropInfo?.startTime ? new Date(airdropInfo.startTime).toLocaleString() : 'Not Set'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Airdrop End Time</h3>
+                  <p className={styles.statValue} style={{ fontSize: '0.8em' }}>
+                    {airdropInfo?.endTime ? new Date(airdropInfo.endTime).toLocaleString() : 'Not Set'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Contract Balance</h3>
+                  <p className={styles.statValue}>
+                    {airdropInfo?.airdropContractBalance ? parseFloat(airdropInfo.airdropContractBalance).toLocaleString() : '0'} {airdropInfo?.tokenSymbol || 'Tokens'}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Network</h3>
+                  <p className={styles.statValue}>
+                    BSC Mainnet
                   </p>
                 </div>
               </div>
@@ -413,6 +397,15 @@ const AdminDashboard = ({
                 </button>
               </div>
             </div>
+
+            {/* Time Range Settings Component */}
+            <TimeRangeSettings
+              contract={contract}
+              airdropInfo={airdropInfo}
+              showNotification={showNotification}
+              onTimeUpdate={handleTimeUpdate}
+              styles={styles}
+            />
             </div>
           )}
 
