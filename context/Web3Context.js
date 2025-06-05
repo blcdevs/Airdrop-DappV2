@@ -4,15 +4,6 @@ import { ethers } from "ethers";
 import { useAccount, useChainId, useConnect, useDisconnect } from "wagmi";
 import { useEthersProvider, useEthersSigner } from "../provider/hooks";
 import ABI from "../web3/artifacts/contracts/TNTCAirdrop.sol/TNTCAirdrop.json";
-import {
-  isMobileBrowser,
-  enhancedContractCall,
-  enhancedDataFetch,
-  checkMobileConnection,
-  waitForMobileWallet,
-  handleMobileError,
-  optimizeForMobile
-} from "../utils/mobileUtils";
 
 const Web3Context = createContext();
 
@@ -27,8 +18,6 @@ export function Web3Provider({ children }) {
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileConnectionReady, setMobileConnectionReady] = useState(false);
 
   // Wagmi hooks v2
   const { address, isConnected } = useAccount();
@@ -43,58 +32,6 @@ export function Web3Provider({ children }) {
   const contractAddress = CONTRACT_ADDRESS;
   const contractABI = ABI.abi;
 
-  // Initialize mobile detection and optimization
-  useEffect(() => {
-    const mobile = isMobileBrowser();
-    setIsMobile(mobile);
-
-    if (mobile) {
-      optimizeForMobile();
-      console.log('Mobile browser detected, applying optimizations');
-    }
-  }, []);
-
-  // Enhanced mobile wallet readiness check
-  useEffect(() => {
-    let isMounted = true;
-
-    const checkMobileReadiness = async () => {
-      if (!isMobile || !isConnected) {
-        setMobileConnectionReady(true);
-        return;
-      }
-
-      try {
-        const isReady = await waitForMobileWallet(15000);
-        if (isMounted) {
-          setMobileConnectionReady(isReady);
-
-          if (isReady && provider) {
-            const connectionOk = await checkMobileConnection(provider);
-            if (isMounted) {
-              setMobileConnectionReady(connectionOk);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Mobile readiness check failed:', error);
-        if (isMounted) {
-          setMobileConnectionReady(false);
-        }
-      }
-    };
-
-    if (isConnected) {
-      checkMobileReadiness();
-    } else {
-      setMobileConnectionReady(false);
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isMobile, isConnected, provider]);
-
   // Initialize contract with retry logic
   useEffect(() => {
     let isMounted = true;
@@ -104,19 +41,12 @@ export function Web3Provider({ children }) {
         return;
       }
 
-      // Wait for mobile wallet readiness
-      if (isMobile && !mobileConnectionReady) {
-        console.log('Waiting for mobile wallet to be ready...');
-        return;
-      }
-
       setIsInitializing(true);
       setInitError(null);
 
       try {
-        // Enhanced delay for mobile browsers
-        const delay = isMobile ? 2000 : 100;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // Add delay to ensure signer is fully ready
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         if (!isMounted) return;
 
@@ -126,42 +56,32 @@ export function Web3Provider({ children }) {
           signer
         );
 
-        // Enhanced contract connection test for mobile
-        if (isMobile) {
-          // Use enhanced contract call for mobile
-          await enhancedContractCall(contractInstance, 'deployed', []);
-        } else {
-          await contractInstance.deployed();
-        }
+        // Test contract connection
+        await contractInstance.deployed();
 
         if (!isMounted) return;
 
         setContract(contractInstance);
         setRetryCount(0);
 
-        // Get fee details with enhanced error handling
+        // Get fee details with error handling
         try {
           await getFeeDetails(contractInstance);
         } catch (feeError) {
-          const handledError = handleMobileError(feeError, 'Fee details fetch');
-          console.warn("Could not fetch fee details:", handledError.message);
+          console.warn("Could not fetch fee details:", feeError);
           // Don't fail contract initialization for fee details
         }
 
       } catch (error) {
-        const handledError = handleMobileError(error, 'Contract initialization');
-        console.error("Error initializing contract:", handledError);
-        setInitError(handledError);
+        console.error("Error initializing contract:", error);
+        setInitError(error);
         setContract(null);
 
-        // Enhanced retry logic for mobile browsers
-        const maxRetries = isMobile ? 5 : 3;
-        const baseDelay = isMobile ? 3000 : 2000;
-
-        if (retryCount < maxRetries && isMounted) {
+        // Retry logic for mobile/network issues
+        if (retryCount < 3 && isMounted) {
           setTimeout(() => {
             setRetryCount(prev => prev + 1);
-          }, baseDelay * (retryCount + 1));
+          }, 2000 * (retryCount + 1)); // Exponential backoff
         }
       } finally {
         if (isMounted) {
@@ -170,7 +90,7 @@ export function Web3Provider({ children }) {
       }
     };
 
-    if (signer && provider && isConnected && (!isMobile || mobileConnectionReady)) {
+    if (signer && provider && isConnected) {
       initializeContract();
     } else {
       setContract(null);
@@ -181,7 +101,7 @@ export function Web3Provider({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [signer, provider, isConnected, retryCount, isMobile, mobileConnectionReady]);
+  }, [signer, provider, isConnected, retryCount]);
 
   useEffect(() => {
     if (!isConnected) {
@@ -209,30 +129,20 @@ export function Web3Provider({ children }) {
 
   const getFeeDetails = async (contractInstance) => {
     try {
-      // Enhanced timeout for mobile browsers
-      const timeout = isMobile ? 15000 : 8000;
+      // Reduced timeout for faster feedback
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeout)
+        setTimeout(() => reject(new Error('Request timeout')), 8000)
       );
 
-      // Use enhanced data fetch for mobile browsers
-      const fetchAirdropInfo = async () => {
-        if (isMobile) {
-          return await enhancedContractCall(contractInstance, 'getAirdropInfo');
-        } else {
-          return await contractInstance.getAirdropInfo();
-        }
-      };
-
-      const airdropInfo = await Promise.race([fetchAirdropInfo(), timeoutPromise]);
+      const airdropInfoPromise = contractInstance.getAirdropInfo();
+      const airdropInfo = await Promise.race([airdropInfoPromise, timeoutPromise]);
 
       if (airdropInfo) {
         setFeeAmount(ethers.utils.formatEther(airdropInfo.currentFeeAmount || 0));
         setFeeCollector(airdropInfo.currentFeeCollector || INITIAL_FEE_COLLECTOR);
       }
     } catch (error) {
-      const handledError = handleMobileError(error, 'Fee details fetch');
-      console.error("Error fetching fee details:", handledError.message);
+      console.error("Error fetching fee details:", error);
       // Use fallback values
       setFeeAmount(INITIAL_FEE_AMOUNT);
       setFeeCollector(INITIAL_FEE_COLLECTOR);
@@ -292,26 +202,23 @@ export function Web3Provider({ children }) {
   };
 
 
-  // Enhanced retry wrapper for contract calls with mobile support
+  // Simple retry wrapper for contract calls
   const retryContractCall = async (contractMethod, ...args) => {
-    const maxRetries = isMobile ? 5 : 2;
-    const baseDelay = isMobile ? 2000 : 1000;
+    const maxRetries = 2; // Reduced retries to prevent loops
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const result = await contractMethod(...args);
         return result;
       } catch (error) {
-        const handledError = handleMobileError(error, `Contract call attempt ${attempt}`);
-        console.error(`Contract call attempt ${attempt} failed:`, handledError.message);
+        console.error(`Contract call attempt ${attempt} failed:`, error);
 
         if (attempt === maxRetries) {
-          throw handledError;
+          throw error;
         }
 
-        // Enhanced delay for mobile browsers
-        const delay = baseDelay * attempt;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // Simple delay without exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
   };
@@ -320,34 +227,24 @@ export function Web3Provider({ children }) {
     try {
       if (!contract) throw new Error("Contract not initialized");
 
-      // Enhanced data fetching for mobile browsers
-      const fetchTasks = async () => {
-        const taskCount = await retryContractCall(() => contract.taskCount());
-        const tasks = [];
+      const taskCount = await retryContractCall(() => contract.taskCount());
+      const tasks = [];
 
-        for (let i = 0; i < taskCount; i++) {
-          const task = await retryContractCall(() => contract.tasks(i));
-          tasks.push({
-            id: i,
-            title: task.title,
-            description: task.description,
-            link: task.link,
-            rewardAmount: task.rewardAmount.toString(),
-            taskType: task.taskType,
-            isActive: task.isActive
-          });
-        }
-        return tasks;
-      };
-
-      if (isMobile) {
-        return await enhancedDataFetch(fetchTasks);
-      } else {
-        return await fetchTasks();
+      for (let i = 0; i < taskCount; i++) {
+        const task = await retryContractCall(() => contract.tasks(i));
+        tasks.push({
+          id: i,
+          title: task.title,
+          description: task.description,
+          link: task.link,
+          rewardAmount: task.rewardAmount.toString(),
+          taskType: task.taskType,
+          isActive: task.isActive
+        });
       }
+      return tasks;
     } catch (error) {
-      const handledError = handleMobileError(error, 'Tasks fetch');
-      console.error("Error fetching tasks:", handledError.message);
+      console.error("Error fetching tasks:", error);
       return [];
     }
   };
@@ -355,19 +252,10 @@ export function Web3Provider({ children }) {
   const getPoints = async (userAddress) => {
     try {
       if (!contract) throw new Error("Contract not initialized");
-
-      const fetchPoints = async () => {
-        return await retryContractCall(() => contract.userTaskPoints(userAddress || address));
-      };
-
-      if (isMobile) {
-        return await enhancedDataFetch(fetchPoints);
-      } else {
-        return await fetchPoints();
-      }
+      const points = await retryContractCall(() => contract.userTaskPoints(userAddress || address));
+      return points;
     } catch (error) {
-      const handledError = handleMobileError(error, 'User points fetch');
-      console.error("Error fetching user points:", handledError.message);
+      console.error("Error fetching user points:", error);
       return ethers.BigNumber.from(0);
     }
   };
@@ -376,24 +264,14 @@ export function Web3Provider({ children }) {
   const getUserReferralInfo = async (userAddress) => {
     try {
       if (!contract) throw new Error("Contract not initialized");
-
-      const fetchReferralInfo = async () => {
-        const referralCount = await contract.getReferralCount(userAddress || address);
-        const referrer = await contract.getReferrer(userAddress || address);
-        return {
-          referralCount: referralCount.toNumber(),
-          referrer
-        };
+      const referralCount = await contract.getReferralCount(userAddress || address);
+      const referrer = await contract.getReferrer(userAddress || address);
+      return { 
+        referralCount: referralCount.toNumber(), 
+        referrer
       };
-
-      if (isMobile) {
-        return await enhancedDataFetch(fetchReferralInfo);
-      } else {
-        return await fetchReferralInfo();
-      }
     } catch (error) {
-      const handledError = handleMobileError(error, 'Referral info fetch');
-      console.error("Error fetching referral info:", handledError.message);
+      console.error("Error fetching referral info:", error);
       return { referralCount: 0, referrer: ethers.constants.AddressZero };
     }
   };
@@ -432,8 +310,6 @@ export function Web3Provider({ children }) {
         isInitializing,
         initError,
         retryCount,
-        isMobile,
-        mobileConnectionReady,
       }}
     >
       {children}

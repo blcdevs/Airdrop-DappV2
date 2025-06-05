@@ -14,7 +14,6 @@ import { config } from "../provider/wagmiConfigs";
 import Header from "../components/Header";
 import ErrorBoundary from "../components/ErrorBoundary";
 import OfflineNotification from "../components/OfflineNotification/OfflineNotification";
-import MobileConnectionStatus from "../components/MobileConnectionStatus";
 
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
@@ -172,7 +171,6 @@ function MyApp({ Component, pageProps }) {
                         <div className="min-h-screen bg-[#1A1A1A]">
                           <Component {...pageProps} />
                         </div>
-                        <MobileConnectionStatus />
                         <OfflineNotification />
                         <ToastContainer
                           position="top-right"
