@@ -8,6 +8,7 @@ import AirdropBanner from "./AirdropBanner/AirdropBanner";
 import UserDetailsModal from "./UserDetailsModal/UserDetailsModal";
 import AddTokenButton from "./AddTokenButton";
 import { ButtonSkeleton } from "./SkeletonLoader/SkeletonLoader";
+import { useAdmin } from "../context/AdminContext";
 
 const ADMIN = process.env.NEXT_PUBLIC_ADMIN_ADDRESS;
 
@@ -24,6 +25,7 @@ const Banner = ({
   onRetry,
   loading,
 }) => {
+  const { isAdmin, getAdminRole } = useAdmin();
   const router = useRouter();
   const [isReferral, setIsReferral] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -282,7 +284,7 @@ const Banner = ({
                       )
                     )}
 
-                    {ADMIN?.toLowerCase() === account?.toLowerCase() && (
+                    {isAdmin(account) && (
                       dataLoading ? (
                         <ButtonSkeleton width="140px" height="40px" />
                       ) : (
@@ -291,6 +293,7 @@ const Banner = ({
                           className="btn btn-default btn-radius animation"
                           data-animation="fadeInUp"
                           data-animation-delay="1.50s"
+                          title={getAdminRole(account)}
                         >
                           Admin Dashboard
                         </button>

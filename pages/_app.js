@@ -4,6 +4,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { Web3Provider } from "../context/Web3Context";
 import { NotificationProvider } from "../context/NotificationContext";
 import { NetworkProvider } from "../context/NetworkContext";
+import { AdminProvider } from "../context/AdminContext";
 import "../styles/globals.css";
 import Head from 'next/head';
 import { ToastContainer, toast } from 'react-toastify';
@@ -163,28 +164,30 @@ function MyApp({ Component, pageProps }) {
             ) : mounted ? (
               /* Normal app UI - only rendered client-side after mounting */
               <ErrorBoundary>
-                <NetworkProvider>
-                  <Web3Provider>
-                    <NotificationProvider>
-                      <div className="min-h-screen bg-[#1A1A1A]">
-                        <Component {...pageProps} />
-                      </div>
-                      <OfflineNotification />
-                      <ToastContainer
-                        position="top-right"
-                        autoClose={5000}
-                        hideProgressBar={false}
-                        newestOnTop
-                        closeOnClick
-                        rtl={false}
-                        pauseOnFocusLoss
-                        draggable
-                        pauseOnHover
-                        theme="dark"
-                      />
-                    </NotificationProvider>
-                  </Web3Provider>
-                </NetworkProvider>
+                <AdminProvider>
+                  <NetworkProvider>
+                    <Web3Provider>
+                      <NotificationProvider>
+                        <div className="min-h-screen bg-[#1A1A1A]">
+                          <Component {...pageProps} />
+                        </div>
+                        <OfflineNotification />
+                        <ToastContainer
+                          position="top-right"
+                          autoClose={5000}
+                          hideProgressBar={false}
+                          newestOnTop
+                          closeOnClick
+                          rtl={false}
+                          pauseOnFocusLoss
+                          draggable
+                          pauseOnHover
+                          theme="dark"
+                        />
+                      </NotificationProvider>
+                    </Web3Provider>
+                  </NetworkProvider>
+                </AdminProvider>
               </ErrorBoundary>
             ) : (
               /* Loading placeholder - shown before client-side rendering */

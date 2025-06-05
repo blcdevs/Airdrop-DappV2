@@ -3,6 +3,11 @@ import styles from "./AdminDashboard.module.css";
 import { useWeb3 } from "../../context/Web3Context"; // Add this import
 import { ethers } from "ethers";
 import TimeRangeSettings from "../TimeInputComponent/TimeInputComponent";
+import { useAdmin } from "../../context/AdminContext";
+import {
+  getAdminPermissions,
+  hasPermission
+} from "../../utils/adminUtils";
 
 const AdminDashboard = ({
   isOpen,
@@ -29,6 +34,23 @@ const AdminDashboard = ({
   const [newCooldown, setNewCooldown] = useState("");
   const [tasks, setTasks] = useState([]);
   const { getAllTasks } = useWeb3();
+
+  // Admin management
+  const {
+    isAdmin,
+    isPrimaryAdmin,
+    getAdminRole,
+    getAdminList,
+    formatAddress,
+    addAdmin,
+    removeAdmin,
+    isValidAddress
+  } = useAdmin();
+
+  // State for admin management
+  const [newAdminAddress, setNewAdminAddress] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [adminSuccess, setAdminSuccess] = useState("");
 
     // New state for task management
     const [newTask, setNewTask] = useState({
@@ -119,6 +141,44 @@ const AdminDashboard = ({
       }
     };
 
+    // Admin management functions
+    const handleAddAdmin = async () => {
+      setAdminError("");
+      setAdminSuccess("");
+
+      try {
+        if (!newAdminAddress.trim()) {
+          throw new Error("Please enter an admin address");
+        }
+
+        await addAdmin(newAdminAddress.trim());
+        setAdminSuccess(`Admin ${formatAddress(newAdminAddress)} added successfully!`);
+        setNewAdminAddress("");
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setAdminSuccess(""), 3000);
+      } catch (error) {
+        setAdminError(error.message);
+        setTimeout(() => setAdminError(""), 5000);
+      }
+    };
+
+    const handleRemoveAdmin = async (address) => {
+      setAdminError("");
+      setAdminSuccess("");
+
+      try {
+        await removeAdmin(address);
+        setAdminSuccess(`Admin ${formatAddress(address)} removed successfully!`);
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setAdminSuccess(""), 3000);
+      } catch (error) {
+        setAdminError(error.message);
+        setTimeout(() => setAdminError(""), 5000);
+      }
+    };
+
 
   if (!isOpen) return null;
 
@@ -126,7 +186,13 @@ const AdminDashboard = ({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.header}>
-          <h2>Admin Dashboard</h2>
+          <div className={styles.headerLeft}>
+            <h2>Admin Dashboard</h2>
+            <div className={styles.adminInfo}>
+              <span className={styles.adminRole}>{getAdminRole(account)}</span>
+              <span className={styles.adminAddress}>{formatAddress(account)}</span>
+            </div>
+          </div>
           <button className={styles.closeButton} onClick={onClose}>
             ×
           </button>
@@ -166,7 +232,15 @@ const AdminDashboard = ({
             Participants
           </button>
 
-        
+          <button
+            className={`${styles.tabButton} ${
+              activeTab === "admins" ? styles.active : ""
+            }`}
+            onClick={() => setActiveTab("admins")}
+          >
+            Admins
+          </button>
+
         </div>
 
         <div className={styles.content}>
@@ -308,18 +382,28 @@ const AdminDashboard = ({
               </div>
 
               <div className={styles.actionButtons}>
-                <button
-                  className={`${styles.actionButton} ${styles.dangerButton}`}
-                  onClick={updateWithdrawTokens}
-                >
-                  Withdraw Remaining Tokens
-                </button>
-                <button
-                  className={`${styles.actionButton} ${styles.primaryButton}`}
-                  onClick={onWithdrawFees}
-                >
-                  Withdraw Collected Fees
-                </button>
+                {hasPermission(account, 'canWithdrawTokens') && (
+                  <button
+                    className={`${styles.actionButton} ${styles.dangerButton}`}
+                    onClick={updateWithdrawTokens}
+                  >
+                    Withdraw Remaining Tokens
+                  </button>
+                )}
+                {hasPermission(account, 'canWithdrawFees') && (
+                  <button
+                    className={`${styles.actionButton} ${styles.primaryButton}`}
+                    onClick={onWithdrawFees}
+                  >
+                    Withdraw Collected Fees
+                  </button>
+                )}
+                {!isPrimaryAdmin(account) && (
+                  <div className={styles.permissionNote}>
+                    <i className="fas fa-info-circle"></i>
+                    Only the Primary Admin can withdraw tokens and fees
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -538,6 +622,115 @@ const AdminDashboard = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {activeTab === "admins" && (
+            <div className={styles.adminsManagement}>
+              {/* Add New Admin Section */}
+              {isPrimaryAdmin(account) && (
+                <div className={styles.addAdminSection}>
+                  <h3>Add New Admin</h3>
+                  <div className={styles.addAdminForm}>
+                    <input
+                      type="text"
+                      value={newAdminAddress}
+                      onChange={(e) => setNewAdminAddress(e.target.value)}
+                      placeholder="Enter admin wallet address (0x...)"
+                      className={styles.adminInput}
+                    />
+                    <button
+                      onClick={handleAddAdmin}
+                      className={styles.addAdminButton}
+                      disabled={!newAdminAddress.trim() || !isValidAddress(newAdminAddress)}
+                    >
+                      Add Admin
+                    </button>
+                  </div>
+
+                  {adminError && (
+                    <div className={styles.adminError}>
+                      <i className="fas fa-exclamation-triangle"></i>
+                      {adminError}
+                    </div>
+                  )}
+
+                  {adminSuccess && (
+                    <div className={styles.adminSuccess}>
+                      <i className="fas fa-check-circle"></i>
+                      {adminSuccess}
+                    </div>
+                  )}
+
+                  <div className={styles.adminNote}>
+                    <i className="fas fa-info-circle"></i>
+                    Only the Primary Admin (Contract Owner) can add or remove other admins.
+                  </div>
+                </div>
+              )}
+
+              <div className={styles.adminsList}>
+                <h3>Current Admin Addresses</h3>
+                <div className={styles.adminCards}>
+                  {getAdminList().map((admin, index) => (
+                    <div key={index} className={styles.adminCard}>
+                      <div className={styles.adminCardHeader}>
+                        <h4>{admin.role}</h4>
+                        <div className={styles.adminBadges}>
+                          {admin.isPrimary && (
+                            <span className={styles.primaryBadge}>Contract Owner</span>
+                          )}
+                          {admin.address.toLowerCase() === account?.toLowerCase() && (
+                            <span className={styles.currentAdminBadge}>You</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className={styles.adminCardContent}>
+                        <p className={styles.adminAddress}>{admin.address}</p>
+                        <p className={styles.adminAddressShort}>{formatAddress(admin.address)}</p>
+
+                        {/* Remove button for non-primary admins */}
+                        {!admin.isPrimary && isPrimaryAdmin(account) && (
+                          <button
+                            onClick={() => handleRemoveAdmin(admin.address)}
+                            className={styles.removeAdminButton}
+                            title="Remove this admin"
+                          >
+                            <i className="fas fa-trash"></i>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.adminPermissions}>
+                <h3>Your Permissions</h3>
+                <div className={styles.permissionsList}>
+                  {Object.entries(getAdminPermissions(account)).map(([permission, hasAccess]) => (
+                    <div key={permission} className={styles.permissionItem}>
+                      <span className={styles.permissionName}>
+                        {permission.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                      </span>
+                      <span className={`${styles.permissionStatus} ${hasAccess ? styles.allowed : styles.denied}`}>
+                        {hasAccess ? '✓ Allowed' : '✗ Denied'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.adminNotes}>
+                <h3>Important Notes</h3>
+                <ul className={styles.notesList}>
+                  <li>Only the <strong>Primary Admin (Contract Owner)</strong> can withdraw tokens and fees</li>
+                  <li>All admins can modify airdrop settings and manage tasks</li>
+                  <li>Changes are executed through the Primary Admin's account on the blockchain</li>
+                  <li>Multiple admins share the same interface but only one owns the contract</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
